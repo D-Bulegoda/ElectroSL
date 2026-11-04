@@ -1,9 +1,11 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace ElectroSL_Backend.Models
 {
     public class User
     {
+        [Key]
         public int UserId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;

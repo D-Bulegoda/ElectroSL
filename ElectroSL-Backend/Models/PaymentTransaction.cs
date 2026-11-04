@@ -1,7 +1,11 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+
 namespace ElectroSL_Backend.Models;
 
 public class PaymentTransaction
 {
+    [Key]
     public int TransactionId { get; set; }
     public int JobId { get; set; }
     public string PaymentMethod { get; set; } = "Cash"; // or "Card"

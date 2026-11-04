@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ElectroSL_Backend.Models;
 
 public class Review
 {
+    [Key]
     public int ReviewId { get; set; }
     public int JobId { get; set; }
     public int ElectricianId { get; set; }

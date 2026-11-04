@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ElectroSL_Backend.Models;
 
 public class ElectricianProfile
 {
+    [Key]
     public int ProfileId { get; set; }
     public int UserId { get; set; }
     public string NvqCertificateUrl { get; set; } = string.Empty;

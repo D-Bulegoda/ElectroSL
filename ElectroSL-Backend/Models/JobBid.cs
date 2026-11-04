@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ElectroSL_Backend.Models;
 
 public class JobBid
 {
+    [Key]
     public int BidId { get; set; }
     public int JobId { get; set; }
     public int ElectricianId { get; set; }

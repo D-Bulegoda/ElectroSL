@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ElectroSL_Backend.Models;
 
 public class JobUsedEquipment
 {
+    [Key]
     public int Id { get; set; }
     public int JobId { get; set; }
     public string ItemName { get; set; } = string.Empty;

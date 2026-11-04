@@ -1,7 +1,11 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+
 namespace ElectroSL_Backend.Models;
 
 public class SimulatorResult
 {
+    [Key]
     public int Id { get; set; }
     public int ElectricianId { get; set; }
     public int TotalScore { get; set; }
