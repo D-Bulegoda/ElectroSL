@@ -1,19 +1,78 @@
-import React from 'react';
-// import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'; // Uncomment after installing react-leaflet
 
-const LeafletMap = ({ center = [6.9271, 79.8612], zoom = 13 }) => {
+import React from 'react';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMapEvents
+} from 'react-leaflet';
+
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+// Fix default Leaflet marker icons in Vite
+const customIcon = L.icon({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+// Detect clicks on the map
+function MapClickHandler({ onPositionChange }) {
+  useMapEvents({
+    click(event) {
+      if (onPositionChange) {
+        onPositionChange([
+          event.latlng.lat,
+          event.latlng.lng
+        ]);
+      }
+    }
+  });
+
+  return null;
+}
+
+const LeafletMap = ({
+  center = [6.9271, 79.8612],
+  zoom = 13,
+  position = center,
+  onPositionChange
+}) => {
   return (
-    <div className="h-64 w-full bg-gray-200 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-400">
-      <div className="text-center text-gray-500">
-        <p>🗺️ OpenStreetMap (Leaflet) Placeholder</p>
-        <p className="text-sm">Center: {center[0]}, {center[1]}</p>
-        {/* 
-        <MapContainer center={center} zoom={zoom} scrollWheelZoom={false} className="h-full w-full">
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          <Marker position={center}><Popup>Job Location</Popup></Marker>
-        </MapContainer>
-        */}
-      </div>
+    <div className="leaflet-map-wrapper">
+      <MapContainer
+        center={center}
+        zoom={zoom}
+        scrollWheelZoom={true}
+        style={{
+          height: '350px',
+          width: '100%',
+          borderRadius: '10px'
+        }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        <MapClickHandler
+          onPositionChange={onPositionChange}
+        />
+
+        <Marker position={position} icon={customIcon}>
+          <Popup>Selected Job Location</Popup>
+        </Marker>
+      </MapContainer>
     </div>
   );
 };
