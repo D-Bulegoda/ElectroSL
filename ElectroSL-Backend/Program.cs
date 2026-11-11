@@ -16,6 +16,7 @@ builder.Services.AddDbContext<ElectroSLDbContext>(options =>
     ));
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IJobService, JobService>();
 builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<IMediaStorageService, LocalMediaStorageService>();
