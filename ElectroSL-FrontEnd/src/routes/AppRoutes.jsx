@@ -1,8 +1,17 @@
+import ToggleAvailability from '../pages/Electrician/ToggleAvailability';
+import IncomingJobAlerts from '../pages/Electrician/IncomingJobAlerts';
+import SubmitQuotationBid from '../pages/Electrician/SubmitQuotationBid';
+import ActiveJobExecution from '../pages/Electrician/ActiveJobExecution';
+import OTPStartWork from '../pages/Electrician/OTPStartWork';
+import SubmitEquipmentList from '../pages/Electrician/SubmitEquipmentList';
+import DigitalPortfolio from '../pages/Electrician/DigitalPortfolio';
+import WalletAndEarnings from '../pages/Electrician/WalletAndEarnings';
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import Login from '../pages/Auth/Login';
-import CustomerHome from '../pages/Customer/CustomerHome';
+
 import ElectricianDashboard from '../pages/Electrician/ElectricianDashboard';
 import AdminDashboard from '../pages/Admin/AdminDashboard';
 
@@ -12,16 +21,27 @@ const AppRoutes = () => {
       <Routes>
         <Route path="/login" element={<Login />} />
         
-        {/* Protected Customer Routes */}
-        <Route element={<ProtectedRoute allowedRole="Customer" />}>
-          <Route path="/customer/home" element={<CustomerHome />} />
-        </Route>
+      
+        <Route path="/electrician/dashboard" element={<ElectricianDashboard />} />
 
-        {/* Protected Electrician Routes */}
-        <Route element={<ProtectedRoute allowedRole="Electrician" />}>
-          <Route path="/electrician/dashboard" element={<ElectricianDashboard />} />
-        </Route>
+        <Route path="/electrician/availability" element={<ToggleAvailability />} />  
 
+        <Route path="/electrician/jobs" element={<IncomingJobAlerts />} />
+
+        <Route path="/electrician/quotation" element={<SubmitQuotationBid />} />
+
+        <Route path="/electrician/active-jobs" element={<ActiveJobExecution />} />
+
+        <Route path="/electrician/otp-verification" element={<OTPStartWork />} />
+
+        <Route path="/electrician/equipment" element={<SubmitEquipmentList />} />
+
+        <Route path="/electrician/portfolio" element={<DigitalPortfolio />} />
+
+        <Route path="/electrician/wallet" element={<WalletAndEarnings />}
+/>
+       
+       
         {/* Protected Admin Routes */}
         <Route element={<ProtectedRoute allowedRole="Admin" />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
