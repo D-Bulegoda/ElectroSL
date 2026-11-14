@@ -8,7 +8,7 @@ import DigitalPortfolio from '../pages/Electrician/DigitalPortfolio';
 import WalletAndEarnings from '../pages/Electrician/WalletAndEarnings';
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import Login from '../pages/Auth/Login';
 
@@ -18,9 +18,12 @@ import AdminDashboard from '../pages/Admin/AdminDashboard';
 const AppRoutes = () => {
   return (
     <Router>
+      
       <Routes>
+        <Route path="/" element={<Navigate to="/electrician/dashboard" replace />} />
         <Route path="/login" element={<Login />} />
-        
+
+  {/* Keep your other existing routes below */}  
       
         <Route path="/electrician/dashboard" element={<ElectricianDashboard />} />
 
@@ -38,8 +41,9 @@ const AppRoutes = () => {
 
         <Route path="/electrician/portfolio" element={<DigitalPortfolio />} />
 
-        <Route path="/electrician/wallet" element={<WalletAndEarnings />}
-/>
+        <Route path="/electrician/wallet" element={<WalletAndEarnings />} />
+
+        <Route path="/" element={<Navigate to="/electrician/dashboard" replace />} />
        
        
         {/* Protected Admin Routes */}
