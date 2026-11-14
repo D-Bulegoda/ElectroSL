@@ -6,6 +6,7 @@ import OTPStartWork from '../pages/Electrician/OTPStartWork';
 import SubmitEquipmentList from '../pages/Electrician/SubmitEquipmentList';
 import DigitalPortfolio from '../pages/Electrician/DigitalPortfolio';
 import WalletAndEarnings from '../pages/Electrician/WalletAndEarnings';
+import SignUpElectrician from '../pages/Auth/SignUpElectrician';
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -43,9 +44,9 @@ const AppRoutes = () => {
 
         <Route path="/electrician/wallet" element={<WalletAndEarnings />} />
 
-        <Route path="/" element={<Navigate to="/electrician/dashboard" replace />} />
        
-       
+       <Route path="/electrician/signup" element={<SignUpElectrician />} />
+
         {/* Protected Admin Routes */}
         <Route element={<ProtectedRoute allowedRole="Admin" />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />

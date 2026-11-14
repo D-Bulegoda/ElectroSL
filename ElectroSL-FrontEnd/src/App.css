@@ -1310,3 +1310,224 @@
     padding: 18px;
   }
 }
+
+
+/* Electrician Sign Up Page */
+
+.signup-container {
+  min-height: 100vh;
+  background: #f4f7fb;
+  padding: 40px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.signup-card {
+  background: #ffffff;
+  width: 100%;
+  max-width: 700px;
+  padding: 35px;
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.signup-card h1 {
+  text-align: center;
+  color: #123b63;
+  margin-bottom: 8px;
+}
+
+.signup-card > p {
+  text-align: center;
+  color: #64748b;
+  margin-bottom: 30px;
+}
+
+.signup-card h3 {
+  color: #123b63;
+  margin: 25px 0 15px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
+.signup-card input,
+.signup-card select,
+.signup-card textarea {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 14px;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.signup-card textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.signup-card label {
+  display: block;
+  margin-bottom: 8px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.signup-card button {
+  width: 100%;
+  padding: 14px;
+  background: #087c55;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.signup-card button:hover {
+  background: #066342;
+}
+
+.signup-card input:focus,
+.signup-card select:focus,
+.signup-card textarea:focus {
+  outline: none;
+  border-color: #087c55;
+  box-shadow: 0 0 0 2px rgba(8, 124, 85, 0.12);
+}
+
+@media (max-width: 600px) {
+  .signup-container {
+    padding: 20px 12px;
+  }
+
+  .signup-card {
+    padding: 22px 16px;
+  }
+}
+
+.signup-login-link {
+  text-align: center;
+  margin-top: 20px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.signup-login-link a {
+  color: #087c55;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.signup-login-link a:hover {
+  text-decoration: underline;
+}
+
+
+/* Electrician Login Page */
+
+.login-container {
+  min-height: 100vh;
+  background: #f4f7fb;
+  padding: 40px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-card {
+  background: #ffffff;
+  width: 100%;
+  max-width: 450px;
+  padding: 40px 35px;
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.login-card h1 {
+  text-align: center;
+  color: #123b63;
+  font-size: 30px;
+  margin-bottom: 10px;
+}
+
+.login-subtitle {
+  text-align: center;
+  color: #087c55;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.login-description {
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+  margin-bottom: 30px;
+}
+
+.login-card label {
+  display: block;
+  margin-bottom: 8px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.login-card input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px;
+  margin-bottom: 20px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 14px;
+}
+
+.login-card input:focus {
+  outline: none;
+  border-color: #087c55;
+  box-shadow: 0 0 0 2px rgba(8, 124, 85, 0.12);
+}
+
+.login-card button {
+  width: 100%;
+  padding: 14px;
+  background: #087c55;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-card button:hover {
+  background: #066342;
+}
+
+.login-signup-link {
+  text-align: center;
+  margin-top: 24px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.login-signup-link a {
+  color: #087c55;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.login-signup-link a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .login-card {
+    padding: 28px 20px;
+  }
+}
