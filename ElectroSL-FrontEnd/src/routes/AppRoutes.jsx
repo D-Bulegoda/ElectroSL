@@ -1,6 +1,9 @@
-
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+// Public & Hidden Auth Pages
+import Home from '../pages/Home/Home';
+import AdminLogin from '../pages/Admin/AdminLogin';
 
 // Customer pages
 import CustomerHome from '../pages/Customer/CustomerHome';
@@ -22,12 +25,37 @@ import OTPStartWork from '../pages/Electrician/OTPStartWork';
 import SubmitEquipmentList from '../pages/Electrician/SubmitEquipmentList';
 import DigitalPortfolio from '../pages/Electrician/DigitalPortfolio';
 import WalletAndEarnings from '../pages/Electrician/WalletAndEarnings';
+import CircuitSimulator from '../pages/Electrician/CircuitSimulator';
+
+// Admin pages
+import AdminLayout from '../pages/Admin/AdminLayout';
+import AdminDashboard from '../pages/Admin/AdminDashboard';
+import TechnicianApprovals from '../pages/Admin/TechnicianApprovals';
+import ApplicationDetail from '../pages/Admin/ApplicationDetail';
+import ApprovedElectricians from '../pages/Admin/ApprovedElectricians';
+import RejectedApplications from '../pages/Admin/RejectedApplications';
+import EquipmentPriceCatalog from '../pages/Admin/EquipmentPriceCatalog';
 
 function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/customer/home" replace />} />
+        {/* Public Landing Page (Supports Ctrl+Shift+A / Ctrl+Alt+A for Admin Login) */}
+        <Route path="/" element={<Home />} />
+
+        {/* Hidden Admin Login */}
+        <Route path="/admin-portal/login" element={<AdminLogin />} />
+
+        {/* Admin Portal */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="approvals" element={<TechnicianApprovals />} />
+          <Route path="applications/:id" element={<ApplicationDetail />} />
+          <Route path="approved" element={<ApprovedElectricians />} />
+          <Route path="rejected" element={<RejectedApplications />} />
+          <Route path="catalog" element={<EquipmentPriceCatalog />} />
+        </Route>
 
         {/* Customer Portal */}
         <Route path="/customer/home" element={<CustomerHome />} />
@@ -49,6 +77,7 @@ function AppRoutes() {
         <Route path="/electrician/equipment" element={<SubmitEquipmentList />} />
         <Route path="/electrician/portfolio" element={<DigitalPortfolio />} />
         <Route path="/electrician/wallet" element={<WalletAndEarnings />} />
+        <Route path="/electrician/simulator" element={<CircuitSimulator />} />
 
         <Route path="*" element={<h2>Page not found</h2>} />
       </Routes>
