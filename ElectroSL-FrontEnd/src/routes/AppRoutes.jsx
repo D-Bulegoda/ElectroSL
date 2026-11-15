@@ -1,9 +1,14 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 // Public & Hidden Auth Pages
 import Home from '../pages/Home/Home';
 import AdminLogin from '../pages/Admin/AdminLogin';
+
+// Authentication pages
+import Login from '../pages/Auth/Login';
+import SignUpElectrician from '../pages/Auth/SignUpElectrician';
 
 // Customer pages
 import CustomerHome from '../pages/Customer/CustomerHome';
@@ -40,7 +45,7 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Landing Page (Supports Ctrl+Shift+A / Ctrl+Alt+A for Admin Login) */}
+        {/* Public Landing Page */}
         <Route path="/" element={<Home />} />
 
         {/* Hidden Admin Login */}
@@ -57,6 +62,10 @@ function AppRoutes() {
           <Route path="catalog" element={<EquipmentPriceCatalog />} />
         </Route>
 
+        {/* Authentication */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/electrician/signup" element={<SignUpElectrician />} />
+
         {/* Customer Portal */}
         <Route path="/customer/home" element={<CustomerHome />} />
         <Route path="/customer/post-job" element={<PostNewJob />} />
@@ -70,15 +79,16 @@ function AppRoutes() {
         {/* Electrician Portal */}
         <Route path="/electrician/dashboard" element={<ElectricianDashboard />} />
         <Route path="/electrician/availability" element={<ToggleAvailability />} />
-        <Route path="/electrician/incoming-jobs" element={<IncomingJobAlerts />} />
-        <Route path="/electrician/submit-bid" element={<SubmitQuotationBid />} />
-        <Route path="/electrician/active-job" element={<ActiveJobExecution />} />
-        <Route path="/electrician/otp" element={<OTPStartWork />} />
+        <Route path="/electrician/jobs" element={<IncomingJobAlerts />} />
+        <Route path="/electrician/quotation" element={<SubmitQuotationBid />} />
+        <Route path="/electrician/active-jobs" element={<ActiveJobExecution />} />
+        <Route path="/electrician/otp-verification" element={<OTPStartWork />} />
         <Route path="/electrician/equipment" element={<SubmitEquipmentList />} />
         <Route path="/electrician/portfolio" element={<DigitalPortfolio />} />
         <Route path="/electrician/wallet" element={<WalletAndEarnings />} />
         <Route path="/electrician/simulator" element={<CircuitSimulator />} />
 
+        {/* Unknown routes */}
         <Route path="*" element={<h2>Page not found</h2>} />
       </Routes>
     </BrowserRouter>
