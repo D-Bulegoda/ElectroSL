@@ -1929,6 +1929,17 @@ a {
   color: #166534;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  overflow-x: hidden;
+}
+
 .review-message.error {
   background: #fee2e2;
   color: #b91c1c;
