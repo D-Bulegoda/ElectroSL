@@ -1,34 +1,98 @@
+
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import ProtectedRoute from './ProtectedRoute';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+// Public & Hidden Auth Pages
+import Home from '../pages/Home/Home';
+import AdminLogin from '../pages/Admin/AdminLogin';
+
+// Authentication pages
 import Login from '../pages/Auth/Login';
+import SignUpElectrician from '../pages/Auth/SignUpElectrician';
+
+// Customer pages
 import CustomerHome from '../pages/Customer/CustomerHome';
+import PostNewJob from '../pages/Customer/PostNewJob';
+import EmergencySOS from '../pages/Customer/EmergencySOS';
+import ViewBidsAndQuotations from '../pages/Customer/ViewBidsAndQuotations';
+import LiveJobTracking from '../pages/Customer/LiveJobTracking';
+import ApproveEquipmentBill from '../pages/Customer/ApproveEquipmentBill';
+import CheckoutPayment from '../pages/Customer/CheckoutPayment';
+import SubmitReview from '../pages/Customer/SubmitReview';
+
+// Electrician pages
 import ElectricianDashboard from '../pages/Electrician/ElectricianDashboard';
+import ToggleAvailability from '../pages/Electrician/ToggleAvailability';
+import IncomingJobAlerts from '../pages/Electrician/IncomingJobAlerts';
+import SubmitQuotationBid from '../pages/Electrician/SubmitQuotationBid';
+import ActiveJobExecution from '../pages/Electrician/ActiveJobExecution';
+import OTPStartWork from '../pages/Electrician/OTPStartWork';
+import SubmitEquipmentList from '../pages/Electrician/SubmitEquipmentList';
+import DigitalPortfolio from '../pages/Electrician/DigitalPortfolio';
+import WalletAndEarnings from '../pages/Electrician/WalletAndEarnings';
+import CircuitSimulator from '../pages/Electrician/CircuitSimulator';
+
+// Admin pages
+import AdminLayout from '../pages/Admin/AdminLayout';
 import AdminDashboard from '../pages/Admin/AdminDashboard';
+import TechnicianApprovals from '../pages/Admin/TechnicianApprovals';
+import ApplicationDetail from '../pages/Admin/ApplicationDetail';
+import ApprovedElectricians from '../pages/Admin/ApprovedElectricians';
+import RejectedApplications from '../pages/Admin/RejectedApplications';
+import EquipmentPriceCatalog from '../pages/Admin/EquipmentPriceCatalog';
 
-const AppRoutes = () => {
+function AppRoutes() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
+        {/* Public Landing Page */}
+        <Route path="/" element={<Home />} />
+
+        {/* Hidden Admin Login */}
+        <Route path="/admin-portal/login" element={<AdminLogin />} />
+
+        {/* Admin Portal */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="approvals" element={<TechnicianApprovals />} />
+          <Route path="applications/:id" element={<ApplicationDetail />} />
+          <Route path="approved" element={<ApprovedElectricians />} />
+          <Route path="rejected" element={<RejectedApplications />} />
+          <Route path="catalog" element={<EquipmentPriceCatalog />} />
+        </Route>
+
+        {/* Authentication */}
         <Route path="/login" element={<Login />} />
-        
-        {/* Protected Customer Routes */}
-        <Route element={<ProtectedRoute allowedRole="Customer" />}>
-          <Route path="/customer/home" element={<CustomerHome />} />
-        </Route>
+        <Route path="/electrician/signup" element={<SignUpElectrician />} />
 
-        {/* Protected Electrician Routes */}
-        <Route element={<ProtectedRoute allowedRole="Electrician" />}>
-          <Route path="/electrician/dashboard" element={<ElectricianDashboard />} />
-        </Route>
+        {/* Customer Portal */}
+        <Route path="/customer/home" element={<CustomerHome />} />
+        <Route path="/customer/post-job" element={<PostNewJob />} />
+        <Route path="/customer/emergency" element={<EmergencySOS />} />
+        <Route path="/customer/bids" element={<ViewBidsAndQuotations />} />
+        <Route path="/customer/tracking" element={<LiveJobTracking />} />
+        <Route path="/customer/equipment-bill" element={<ApproveEquipmentBill />} />
+        <Route path="/customer/payment" element={<CheckoutPayment />} />
+        <Route path="/customer/review" element={<SubmitReview />} />
 
-        {/* Protected Admin Routes */}
-        <Route element={<ProtectedRoute allowedRole="Admin" />}>
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        </Route>
+        {/* Electrician Portal */}
+        <Route path="/electrician/dashboard" element={<ElectricianDashboard />} />
+        <Route path="/electrician/availability" element={<ToggleAvailability />} />
+        <Route path="/electrician/jobs" element={<IncomingJobAlerts />} />
+        <Route path="/electrician/quotation" element={<SubmitQuotationBid />} />
+        <Route path="/electrician/active-jobs" element={<ActiveJobExecution />} />
+        <Route path="/electrician/otp-verification" element={<OTPStartWork />} />
+        <Route path="/electrician/equipment" element={<SubmitEquipmentList />} />
+        <Route path="/electrician/portfolio" element={<DigitalPortfolio />} />
+        <Route path="/electrician/wallet" element={<WalletAndEarnings />} />
+        <Route path="/electrician/simulator" element={<CircuitSimulator />} />
+
+        {/* Unknown routes */}
+        <Route path="*" element={<h2>Page not found</h2>} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
-};
+}
 
 export default AppRoutes;
