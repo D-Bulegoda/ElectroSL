@@ -13,4 +13,7 @@ public class SimulatorResult
     public int SafetyMistakesCount { get; set; }
     public bool IsPassed { get; set; }
     public DateTime AttemptDate { get; set; } = DateTime.UtcNow;
+
+    // Navigation Property
+    public User Electrician { get; set; } = null!;
 }

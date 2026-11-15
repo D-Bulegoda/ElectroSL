@@ -13,4 +13,7 @@ public class PaymentTransaction
     public decimal PlatformCommission { get; set; } // 15%
     public decimal ElectricianEarning { get; set; } // 85%
     public DateTime ProcessedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation Property
+    public Job Job { get; set; } = null!;
 }

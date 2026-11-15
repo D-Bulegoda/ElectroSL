@@ -14,4 +14,7 @@ public class ElectricianProfile
     public double CurrentLat { get; set; }
     public double CurrentLng { get; set; }
     public decimal AppWalletBalance { get; set; } = 0.0m;
+
+    // Navigation Property
+    public User User { get; set; } = null!;
 }

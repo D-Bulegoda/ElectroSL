@@ -12,4 +12,7 @@ public class JobUsedEquipment
     public int Quantity { get; set; }
     public decimal VariancePercentage { get; set; } // Flagged if > 5%
     public string ReceiptImageUrl { get; set; } = string.Empty;
+
+    // Navigation Property
+    public Job Job { get; set; } = null!;
 }
