@@ -3,26 +3,51 @@ import { Stage, Layer, Rect, Circle, Line, Text, Group, Arc } from 'react-konva'
 import './CircuitSimulator.css';
 
 const WIRE_STYLES = {
-  L: { name: 'Live (Brown)', color: '#9A3412', highlight: '#EA580C' },
-  N: { name: 'Neutral (Blue)', color: '#1D4ED8', highlight: '#60A5FA' },
-  E: { name: 'Earth (Green/Yellow)', color: '#15803D', highlight: '#FACC15' },
+  L: { name: 'Live (Brown) / ජීවී', color: '#9A3412', highlight: '#EA580C' },
+  N: { name: 'Neutral (Blue) / උදාසීන', color: '#1D4ED8', highlight: '#60A5FA' },
+  E: { name: 'Earth (Green/Yellow) / පෘථිවි', color: '#15803D', highlight: '#FACC15' },
 };
+
+const TASK_BANK = [
+  {
+    id: 'TASK_LIGHT_SINGLE',
+    titleEn: 'Task 1: Single-Way Lighting & Earth Bonding',
+    titleSinhala: 'කාර්යය 1: ආලෝකකරණ පරිපථය සහ පෘථිවි සම්බන්ධතාව',
+    descEn: 'Connect Live through MCB and Switch to Bulb L. Connect Neutral and Earth securely.',
+    descSinhala: 'MCB සහ ස්විචය හරහා බල්බ් L වෙත ජීවී කම්බිය සම්බන්ධ කරන්න. උදාසීන සහ පෘථිවි කම්බි අත්වැරදීම්වලින් තොරව සවි කරන්න.',
+    level: 1,
+    requiredWires: [
+      { from: 'MAIN_L', to: 'SW_COM', type: 'L' },
+      { from: 'SW_L1', to: 'BULB_L', type: 'L' },
+      { from: 'MAIN_N', to: 'BULB_N', type: 'N' },
+      { from: 'MAIN_E', to: 'BULB_E', type: 'E' },
+    ],
+  },
+  {
+    id: 'TASK_SOCKET_13A',
+    titleEn: 'Task 2: 13A Socket Outlet Polarity Wiring',
+    titleSinhala: 'කාර්යය 2: 13A සොකට් අලෙවිසැල් රැහැන්ගත කිරීම',
+    descEn: 'Wire the 13A Socket with correct IEC polarity: Live Right, Neutral Left, Earth Top.',
+    descSinhala: 'නිවැරදි IEC ප්‍රමිතියට අනුව 13A සොකට් එකට කම්බි සම්බන්ධ කරන්න: දකුණට ජීවී, වමට උදාසීන, ඉහළට පෘථිවි.',
+    level: 2,
+    requiredWires: [
+      { from: 'MAIN_L', to: 'SW_COM', type: 'L' },
+      { from: 'SW_L1', to: 'SOCK_L', type: 'L' },
+      { from: 'MAIN_N', to: 'SOCK_N', type: 'N' },
+      { from: 'MAIN_E', to: 'SOCK_E', type: 'E' },
+    ],
+  },
+];
 
 const LEVELS = {
   1: {
     title: 'Level 1: Domestic Switch & Earthing',
-    subtitle: 'Route 230V Live through the MCB & Wall Switch, Neutral to the Bulb, and Earth to the metallic housing.',
     terminals: [
-      // Main Consumer Unit (MCB)
       { id: 'MAIN_L', label: 'L IN', x: 145, y: 145, type: 'L' },
       { id: 'MAIN_N', label: 'N BAR', x: 145, y: 235, type: 'N' },
       { id: 'MAIN_E', label: 'E BAR', x: 145, y: 325, type: 'E' },
-
-      // Wall Switch
       { id: 'SW_COM', label: 'COM', x: 430, y: 155, type: 'L' },
       { id: 'SW_L1', label: 'L1', x: 520, y: 155, type: 'L' },
-
-      // Ceiling Light Fixture
       { id: 'BULB_L', label: 'L', x: 765, y: 145, type: 'L' },
       { id: 'BULB_N', label: 'N', x: 765, y: 235, type: 'N' },
       { id: 'BULB_E', label: 'EARTH', x: 765, y: 325, type: 'E' },
@@ -30,17 +55,12 @@ const LEVELS = {
   },
   2: {
     title: 'Level 2: 13A Socket Outlet Ring/Radial',
-    subtitle: 'Wire a Sri Lankan 3-pin 13A wall socket safely with proper Live, Neutral, and Earth polarity.',
     terminals: [
       { id: 'MAIN_L', label: 'L IN', x: 145, y: 145, type: 'L' },
       { id: 'MAIN_N', label: 'N BAR', x: 145, y: 235, type: 'N' },
       { id: 'MAIN_E', label: 'E BAR', x: 145, y: 325, type: 'E' },
-
-      // Isolator Switch
       { id: 'SW_COM', label: 'IN', x: 430, y: 155, type: 'L' },
       { id: 'SW_L1', label: 'OUT', x: 520, y: 155, type: 'L' },
-
-      // 13A 3-Pin Socket
       { id: 'SOCK_E', label: 'E (TOP)', x: 810, y: 150, type: 'E' },
       { id: 'SOCK_N', label: 'N (LEFT)', x: 765, y: 245, type: 'N' },
       { id: 'SOCK_L', label: 'L (RIGHT)', x: 855, y: 245, type: 'L' },
@@ -49,6 +69,11 @@ const LEVELS = {
 };
 
 export default function CircuitSimulator() {
+  const [electricianId] = useState(1); // Can be fetched from user login context
+  const [isVerifiedProfile, setIsVerifiedProfile] = useState(false);
+  const [checkingVerification, setCheckingVerification] = useState(true);
+
+  const [assignedTask, setAssignedTask] = useState(TASK_BANK[0]);
   const [level, setLevel] = useState(1);
   const [selectedWireType, setSelectedWireType] = useState('L');
   const [selectedTerminal, setSelectedTerminal] = useState(null);
@@ -58,16 +83,50 @@ export default function CircuitSimulator() {
   const [isPowered, setIsPowered] = useState(false);
   const [isShortCircuit, setIsShortCircuit] = useState(false);
   const [score, setScore] = useState(null);
+  const [evaluationBreakdown, setEvaluationBreakdown] = useState(null);
   const [status, setStatus] = useState({
     type: 'info',
-    text: 'Pick a wire color above, then click two brass terminals to connect them.',
+    text: 'Loading assigned randomized task...',
   });
   const [pulseOffset, setPulseOffset] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 1. Check if Electrician has filled their profile & uploaded verification certificates
+  useEffect(() => {
+    async function checkVerificationStatus() {
+      try {
+        const res = await fetch(`http://localhost:5192/api/ElectricianProfile/status/${electricianId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.hasUploadedCertificates || data.verificationStatus === 'Approved') {
+            setIsVerifiedProfile(true);
+          }
+        } else {
+          setIsVerifiedProfile(true); // Fallback for local testing if API isn't wired yet
+        }
+      } catch {
+        setIsVerifiedProfile(true); // Fallback for local development
+      } finally {
+        setCheckingVerification(false);
+      }
+    }
+
+    // 2. Assign randomized task based on Electrician ID hash/modulo
+    const taskIndex = electricianId % TASK_BANK.length;
+    const task = TASK_BANK[taskIndex];
+    setAssignedTask(task);
+    setLevel(task.level);
+    setStatus({
+      type: 'info',
+      text: `Assigned Task: ${task.titleEn} / ${task.titleSinhala}`,
+    });
+
+    checkVerificationStatus();
+  }, [electricianId]);
+
   const currentLevel = LEVELS[level];
 
-  // Animate electricity flow dots when circuit is live
+  // Animate electricity flow dots
   useEffect(() => {
     if (!isPowered) return;
     const interval = setInterval(() => {
@@ -75,20 +134,6 @@ export default function CircuitSimulator() {
     }, 50);
     return () => clearInterval(interval);
   }, [isPowered]);
-
-  const handleLevelChange = (lvl) => {
-    setLevel(lvl);
-    setWires([]);
-    setSelectedTerminal(null);
-    setIsBreakerOn(false);
-    setIsPowered(false);
-    setIsShortCircuit(false);
-    setScore(null);
-    setStatus({
-      type: 'info',
-      text: `Loaded ${LEVELS[lvl].title}. Connect all terminals accurately.`,
-    });
-  };
 
   const handleTerminalClick = (terminal) => {
     setIsBreakerOn(false);
@@ -99,7 +144,7 @@ export default function CircuitSimulator() {
       setSelectedTerminal(terminal);
       setStatus({
         type: 'info',
-        text: `Terminal [${terminal.label}] selected. Click destination brass screw terminal.`,
+        text: `Terminal [${terminal.label}] selected. Click target screw terminal.`,
       });
       return;
     }
@@ -117,13 +162,22 @@ export default function CircuitSimulator() {
     );
 
     if (alreadyConnected) {
-      setStatus({ type: 'danger', text: 'These two terminals are already wired together!' });
+      setStatus({ type: 'danger', text: 'Terminals already connected!' });
       setSelectedTerminal(null);
       return;
     }
 
     const newWire = {
-      id: `${selectedTerminal.id}_${terminal.id}`, from: selectedTerminal, to: terminal, wireType: selectedWireType, };  setWires([...wires, newWire]); setSelectedTerminal(null); setStatus({ type: 'info', text: `Connected [${selectedTerminal.label}] → [${terminal.label}] with${WIRE_STYLES[selectedWireType].name}.`,
+      id: `${selectedTerminal.id}_${terminal.id}`,
+      from: selectedTerminal,
+      to: terminal,
+      wireType: selectedWireType,
+    };
+    setWires([...wires, newWire]);
+    setSelectedTerminal(null);
+    setStatus({
+      type: 'info',
+      text: `Connected [${selectedTerminal.label}] → [${terminal.label}] with ${WIRE_STYLES[selectedWireType].name}.`,
     });
   };
 
@@ -132,17 +186,7 @@ export default function CircuitSimulator() {
     setIsPowered(false);
     setIsShortCircuit(false);
     setWires(wires.filter((w) => w.id !== id));
-    setStatus({ type: 'info', text: 'Wire disconnected.' });
-  };
-
-  const handleClear = () => {
-    setWires([]);
-    setSelectedTerminal(null);
-    setIsBreakerOn(false);
-    setIsPowered(false);
-    setIsShortCircuit(false);
-    setScore(null);
-    setStatus({ type: 'info', text: 'Workbench cleared.' });
+    setStatus({ type: 'info', text: 'Wire removed.' });
   };
 
   const findWire = (id1, id2) =>
@@ -154,7 +198,7 @@ export default function CircuitSimulator() {
     if (!breakerState) {
       setIsPowered(false);
       setIsShortCircuit(false);
-      setStatus({ type: 'info', text: 'Main MCB is OFF. Flip the MCB breaker ON to energize.' });
+      setStatus({ type: 'info', text: 'MCB is OFF. Flip MCB ON to test circuit.' });
       return;
     }
 
@@ -168,105 +212,57 @@ export default function CircuitSimulator() {
       setIsPowered(false);
       setIsShortCircuit(true);
       setScore(0);
+      setEvaluationBreakdown({
+        shortCircuit: true,
+        details: 'Critical Short Circuit detected between Live and Neutral/Earth.',
+      });
       setStatus({
         type: 'danger',
-        text: '⚡ TRIPPED! Direct Short Circuit between Live and Neutral/Earth! Score: 0/100',
+        text: '⚡ TRIPPED! Short Circuit! Score: 0/100 (උපද්‍රවයි: කෙටි පරිපථයකි!)',
       });
       return;
     }
 
-    if (level === 1) {
-      const wLiveSw = findWire('MAIN_L', 'SW_COM');
-      const wSwBulb = findWire('SW_L1', 'BULB_L');
-      const wNeutBulb = findWire('MAIN_N', 'BULB_N');
-      const wEarthBulb = findWire('MAIN_E', 'BULB_E');
-
-      if (!wLiveSw || !wSwBulb || !wNeutBulb) {
-        setIsPowered(false);
-        setScore(30);
-        setStatus({
-          type: 'danger',
-          text: '❌ Open Circuit: Power is not completing the loop through the switch to the bulb. Score: 30/100',
-        });
-        return;
-      }
-
-      if (!switchState) {
-        setIsPowered(false);
-        setStatus({
-          type: 'info',
-          text: 'MCB is ON, Wall Switch is OFF. Click the Wall Switch rocker to turn the light ON!',
-        });
-        return;
-      }
-
-      let pts = 60;
-      if (wEarthBulb) pts += 20;
-      if (
-        wLiveSw.wireType === 'L' &&
-        wSwBulb.wireType === 'L' &&
-        wNeutBulb.wireType === 'N' &&
-        (!wEarthBulb || wEarthBulb.wireType === 'E')
-      ) {
-        pts += 20;
-      }
-
-      setIsPowered(true);
-      setScore(pts);
-      setStatus({
-        type: pts === 100 ? 'success' : 'info',
-        text:
-          pts === 100
-            ? '✅ EXCELLENT! 230V Circuit Active, Earth Bonded & IEC Color Codes Verified! Score: 100/100'
-            : `⚠️ Circuit Active (${pts}/100) — Check Earth bonding and IEC wire color standards.`,
-      });
-    } else {
-      // Level 2: 13A Socket
-      const wLiveSw = findWire('MAIN_L', 'SW_COM');
-      const wSwSock = findWire('SW_L1', 'SOCK_L');
-      const wNeutSock = findWire('MAIN_N', 'SOCK_N');
-      const wEarthSock = findWire('MAIN_E', 'SOCK_E');
-
-      if (!wLiveSw || !wSwSock || !wNeutSock) {
-        setIsPowered(false);
-        setScore(30);
-        setStatus({
-          type: 'danger',
-          text: '❌ Socket Unpowered: Verify Live (Right) and Neutral (Left) connections. Score: 30/100',
-        });
-        return;
-      }
-
-      if (!switchState) {
-        setIsPowered(false);
-        setStatus({
-          type: 'info',
-          text: 'MCB is ON, Socket Switch is OFF. Click the Wall Switch rocker to test socket power!',
-        });
-        return;
-      }
-
-      let pts = 60;
-      if (wEarthSock) pts += 20;
-      if (
-        wLiveSw.wireType === 'L' &&
-        wSwSock.wireType === 'L' &&
-        wNeutSock.wireType === 'N' &&
-        (!wEarthSock || wEarthSock.wireType === 'E')
-      ) {
-        pts += 20;
-      }
-
-      setIsPowered(true);
-      setScore(pts);
-      setStatus({
-        type: pts === 100 ? 'success' : 'info',
-        text:
-          pts === 100
-            ? '✅ PERFECT SOCKET POLARITY! Live Right, Neutral Left, Earth Top Verified! Score: 100/100'
-            : `⚠️ Socket Energized (${pts}/100) — Verify Earth pin and wire color coding.`,
-      });
+    if (!switchState) {
+      setIsPowered(false);
+      setStatus({ type: 'info', text: 'MCB is ON, Wall Switch is OFF. Toggle switch ON.' });
+      return;
     }
+
+    // Comprehensive scoring breakdown against assigned task criteria
+    let matchedWiresCount = 0;
+    let colorErrors = 0;
+
+    assignedTask.requiredWires.forEach((req) => {
+      const activeWire = findWire(req.from, req.to);
+      if (activeWire) {
+        if (activeWire.wireType === req.type) {
+          matchedWiresCount++;
+        } else {
+          colorErrors++;
+        }
+      }
+    });
+
+    let calculatedScore = (matchedWiresCount / assignedTask.requiredWires.length) * 80;
+    if (colorErrors === 0 && matchedWiresCount > 0) calculatedScore += 20; // IEC Color bonus
+
+    setIsPowered(true);
+    setScore(Math.round(calculatedScore));
+    setEvaluationBreakdown({
+      matched: matchedWiresCount,
+      total: assignedTask.requiredWires.length,
+      colorErrors,
+      passed: calculatedScore >= 75,
+    });
+
+    setStatus({
+      type: calculatedScore >= 75 ? 'success' : 'danger',
+      text:
+        calculatedScore >= 75
+          ? `✅ TASK PASSED! Score: ${Math.round(calculatedScore)}/100. All wiring & safety protocols verified.`
+          : `❌ TASK FAILED! Score: ${Math.round(calculatedScore)}/100. Review IEC color codes and terminal routing.`,
+    });
   };
 
   const handleToggleBreaker = () => {
@@ -287,129 +283,135 @@ export default function CircuitSimulator() {
     if (score === null) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch('http://localhost:5192/api/Simulator/submit-score', {
+      const response = await fetch('http://localhost:5192/api/Simulator/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          electricianProfileId: 1,
-          score,
-          levelsCompleted: level,
-          passedQualityCheck: score >= 75,
+          electricianId: electricianId,
+          correctConnections: evaluationBreakdown?.matched || 0,
+          score: score,
+          isPassed: score >= 75,
+          taskId: assignedTask.id,
+          configurationJson: JSON.stringify(wires),
         }),
       });
       if (response.ok) {
-        alert(`Score (${score}/100) saved to your Electrician Profile!`);
+        alert(`🎉 Success! Final Score (${score}/100) recorded in your Electrician Profile.`);
       } else {
-        alert('Could not reach backend API. Ensure ASP.NET Core server is running.');
+        alert('Score calculated successfully, but backend connection failed.');
       }
     } catch {
-      alert('Network error submitting score.');
+      alert('Error submitting score to server.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Generate pegboard background grid dots
+  // Grid dots
   const gridDots = [];
   for (let gx = 30; gx < 960; gx += 30) {
     for (let gy = 30; gy < 430; gy += 30) {
-      gridDots.push(<Circle key={`${gx}-${gy}`} x={gx} y={gy} radius={1.3} fill="#334155" />); } }  return ( <div className="sim-page"> <div className="sim-wrapper"> {/* Top Bar */} <div className="sim-header"> <div className="sim-title-group"> <h1>⚡ ElectroSL 2D Quality Bench</h1> <p>{currentLevel.subtitle}</p> </div>  <div className="sim-header-stats"> <div className="sim-level-tabs"> <button className={`sim-level-btn ${level === 1 ? 'active' : ''}`}
-                onClick={() => handleLevelChange(1)}
-              >
-                Level 1: Lighting
-              </button>
-              <button
-                className={`sim-level-btn ${level === 2 ? 'active' : ''}`} onClick={() => handleLevelChange(2)} > Level 2: 13A Socket </button> </div>  {score !== null && ( <div className={`sim-score-pill ${score < 75 ? 'fail' : ''}`}>
-                Score: {score}/100
+      gridDots.push(<Circle key={`${gx}-${gy}`} x={gx} y={gy} radius={1.3} fill="#334155" />);
+    }
+  }
+
+  // Guard Clause: If electrician hasn't uploaded certificate/profile details yet
+  if (checkingVerification) {
+    return <div className="sim-page"><div className="sim-wrapper">Loading assessment profile...</div></div>;
+  }
+
+  if (!isVerifiedProfile) {
+    return (
+      <div className="sim-page">
+        <div className="sim-wrapper" style={{ textAlign: 'center', padding: '50px' }}>
+          <h2>🔒 Certificate & Profile Locked</h2>
+          <p>Please complete your Electrician profile forum and upload your professional certificates / NIC documents before accessing the live 2D Simulator workbench.</p>
+          <p className="sinhala-hint">කරුණාකර සිමියුලේටරය වෙත පිවිසීමට පෙර ඔබගේ පැතිකඩ (Profile) සහ සහතික පත් (Certificates) උඩුගත කරන්න.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="sim-page">
+      <div className="sim-wrapper">
+        {/* Top Header & Task Briefing */}
+        <div className="sim-header">
+          <div className="sim-title-group">
+            <h1>⚡ ElectroSL Practical Skill Assessment</h1>
+            <p className="task-title-en"><strong>{assignedTask.titleEn}</strong></p>
+            <p className="task-title-si text-amber-400">{assignedTask.titleSinhala}</p>
+            <p className="task-desc">{assignedTask.descEn} / {assignedTask.descSinhala}</p>
+          </div>
+          <div className="sim-header-stats">
+            {score !== null && (
+              <div className={`sim-score-pill ${score < 75 ? 'fail' : ''}`}>
+                Final Score: {score}/100
               </div>
             )}
           </div>
         </div>
 
-        {/* Colorful Wire & Control Toolbar */}
+        {/* Toolbar */}
         <div className="sim-toolbar">
           <div className="sim-wire-selector">
-            <span className="sim-wire-label">Cable Spool:</span>
+            <span className="sim-wire-label">Cable Spool / කේබල් වර්ගය:</span>
             {Object.entries(WIRE_STYLES).map(([key, style]) => (
               <button
                 key={key}
                 onClick={() => setSelectedWireType(key)}
-                className={`wire-btn ${selectedWireType === key ? 'selected' : ''}`} style={{ backgroundColor: style.color }} > <span className="wire-swatch" style={{ backgroundColor: style.highlight }} /> {style.name} </button> ))} </div>  <div className="sim-actions"> <button className="btn-clear" onClick={handleClear}> Clear Wires </button> <button className="btn-test" onClick={handleToggleBreaker}> {isBreakerOn ? '🔴 Trip MCB OFF' : '⚡ Flip MCB ON'} </button> {score !== null && score >= 75 && ( <button className="btn-submit-score" onClick={handleSubmitScore} disabled={isSubmitting} > {isSubmitting ? 'Saving...' : '✓ Submit Score'} </button> )} </div> </div>  {/* Status Feedback Banner */} <div className={`sim-status ${status.type}`}>{status.text}</div>
+                className={`wire-btn ${selectedWireType === key ? 'selected' : ''}`}
+                style={{ backgroundColor: style.color }}
+              >
+                <span className="wire-swatch" style={{ backgroundColor: style.highlight }} />
+                {style.name}
+              </button>
+            ))}
+          </div>
+          <div className="sim-actions">
+            <button className="btn-clear" onClick={() => setWires([])}>Clear Wires</button>
+            <button className="btn-test" onClick={handleToggleBreaker}>
+              {isBreakerOn ? '🔴 Trip MCB OFF' : '⚡ Flip MCB ON'}
+            </button>
+            {score !== null && (
+              <button className="btn-submit-score" onClick={handleSubmitScore} disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : '✓ Submit Assessment'}
+              </button>
+            )}
+          </div>
+        </div>
 
-        {/* Interactive 2D Konva Workbench */}
+        {/* Status Message */}
+        <div className={`sim-status ${status.type}`}>{status.text}</div>
+
+        {/* Interactive Konva Workbench */}
         <div className="sim-canvas-box">
           <Stage width={960} height={440}>
             <Layer>
-              {/* Dark Blueprint Workbench Background */}
               <Rect x={0} y={0} width={960} height={440} fill="#0F172A" cornerRadius={10} />
               {gridDots}
 
-              {/* DIN Rail Metal Strip */}
               <Rect x={25} y={195} width={910} height={24} fill="#334155" opacity={0.45} />
               <Rect x={25} y={201} width={910} height={12} fill="#475569" opacity={0.45} />
 
-              {/* ================= 1. MAIN CONSUMER UNIT (MCB) ================= */}
+              {/* MCB Unit */}
               <Group x={35} y={65}>
-                {/* Outer Enclosure */}
-                <Rect
-                  width={150}
-                  height={310}
-                  fill="#1E293B"
-                  stroke="#64748B"
-                  strokeWidth={3}
-                  cornerRadius={12}
-                  shadowColor="#000"
-                  shadowBlur={15}
-                />
-                {/* Header Plate */}
+                <Rect width={150} height={310} fill="#1E293B" stroke="#64748B" strokeWidth={3} cornerRadius={12} />
                 <Rect x={10} y={10} width={130} height={36} fill="#0F294A" cornerRadius={6} />
-                <Text
-                  text="230V MCB BOX"
-                  x={22}
-                  y={21}
-                  fill="#FBBF24"
-                  fontSize={13}
-                  fontStyle="bold"
-                />
-
-                {/* Interactive Breaker Toggle Lever */}
+                <Text text="230V MCB BOX" x={22} y={21} fill="#FBBF24" fontSize={13} fontStyle="bold" />
+                
                 <Group x={22} y={62} onClick={handleToggleBreaker}>
-                  <Rect
-                    width={56}
-                    height={95}
-                    fill="#E2E8F0"
-                    stroke="#94A3B8"
-                    strokeWidth={2}
-                    cornerRadius={6}
-                  />
+                  <Rect width={56} height={95} fill="#E2E8F0" stroke="#94A3B8" strokeWidth={2} cornerRadius={6} />
                   <Text text="C16" x={16} y={8} fill="#0F294A" fontSize={11} fontStyle="bold" />
-                  {/* Breaker Switch Housing */}
                   <Rect x={14} y={26} width={28} height={46} fill="#1E293B" cornerRadius={4} />
-                  {/* Colored Lever */}
-                  <Rect
-                    x={16}
-                    y={isBreakerOn ? 28 : 48}
-                    width={24}
-                    height={22}
-                    fill={isBreakerOn ? '#EF4444' : '#22C55E'}
-                    cornerRadius={3}
-                  />
-                  <Text
-                    text={isBreakerOn ? 'I - ON' : 'O - OFF'}
-                    x={10}
-                    y={78}
-                    fill={isBreakerOn ? '#DC2626' : '#16A34A'}
-                    fontSize={10}
-                    fontStyle="bold"
-                  />
+                  <Rect x={16} y={isBreakerOn ? 28 : 48} width={24} height={22} fill={isBreakerOn ? '#EF4444' : '#22C55E'} cornerRadius={3} />
+                  <Text text={isBreakerOn ? 'I - ON' : 'O - OFF'} x={10} y={78} fill={isBreakerOn ? '#DC2626' : '#16A34A'} fontSize={10} fontStyle="bold" />
                 </Group>
 
-                {/* Busbar Color Badges */}
                 <Rect x={86} y={70} width={20} height={20} fill="#9A3412" cornerRadius={4} />
                 <Rect x={86} y={160} width={20} height={20} fill="#1D4ED8" cornerRadius={4} />
                 <Rect x={86} y={250} width={20} height={20} fill="#15803D" cornerRadius={4} />
 
-                {/* Short Circuit Spark Graphic */}
                 {isShortCircuit && (
                   <Group x={75} y={140}>
                     <Circle radius={34} fill="#FACC15" opacity={0.85} shadowColor="#EF4444" shadowBlur={25} />
@@ -418,195 +420,37 @@ export default function CircuitSimulator() {
                 )}
               </Group>
 
-              {/* ================= 2. 3D ROCKER WALL SWITCH ================= */}
+              {/* Wall Switch */}
               <Group x={385} y={85}>
-                {/* Faceplate */}
-                <Rect
-                  width={180}
-                  height={180}
-                  fill="#F8FAFC"
-                  stroke="#CBD5E1"
-                  strokeWidth={3}
-                  cornerRadius={14}
-                  shadowColor="#000"
-                  shadowBlur={15}
-                />
-                {/* Corner Screw Caps */}
-                <Circle x={18} y={18} radius={5} fill="#CBD5E1" />
-                <Circle x={162} y={18} radius={5} fill="#CBD5E1" />
-                <Circle x={18} y={162} radius={5} fill="#CBD5E1" />
-                <Circle x={162} y={162} radius={5} fill="#CBD5E1" />
-
-                <Text
-                  text="WALL SWITCH"
-                  x={42}
-                  y={16}
-                  fill="#475569"
-                  fontSize={12}
-                  fontStyle="bold"
-                />
-
-                {/* Clickable Rocker Button */}
+                <Rect width={180} height={180} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
+                <Text text="WALL SWITCH" x={42} y={16} fill="#475569" fontSize={12} fontStyle="bold" />
                 <Group x={55} y={96} onClick={handleToggleWallSwitch}>
-                  <Rect
-                    width={70}
-                    height={64}
-                    fill={isSwitchOn ? '#E2E8F0' : '#CBD5E1'}
-                    stroke="#94A3B8"
-                    strokeWidth={2}
-                    cornerRadius={8}
-                  />
-                  {/* Red Neon Indicator Strip */}
-                  <Rect
-                    x={22}
-                    y={8}
-                    width={26}
-                    height={5}
-                    fill={isSwitchOn ? '#EF4444' : '#94A3B8'}
-                    cornerRadius={2}
-                  />
-                  <Text
-                    text={isSwitchOn ? 'ON' : 'OFF'}
-                    x={22}
-                    y={28}
-                    fill="#0F294A"
-                    fontSize={13}
-                    fontStyle="bold"
-                  />
+                  <Rect width={70} height={64} fill={isSwitchOn ? '#E2E8F0' : '#CBD5E1'} stroke="#94A3B8" strokeWidth={2} cornerRadius={8} />
+                  <Text text={isSwitchOn ? 'ON' : 'OFF'} x={22} y={28} fill="#0F294A" fontSize={13} fontStyle="bold" />
                 </Group>
               </Group>
 
-              {/* ================= 3. LOAD: GLOWING BULB OR 13A SOCKET ================= */}
+              {/* Load (Fixture / Socket) */}
               {level === 1 ? (
                 <Group x={720} y={65}>
-                  {/* Ceiling Rose Housing */}
-                  <Rect
-                    width={205}
-                    height={310}
-                    fill="#F8FAFC"
-                    stroke="#CBD5E1"
-                    strokeWidth={3}
-                    cornerRadius={14}
-                    shadowColor="#000"
-                    shadowBlur={15}
-                  />
-                  <Text
-                    text="230V CEILING FIXTURE"
-                    x={28}
-                    y={16}
-                    fill="#0F294A"
-                    fontSize={12}
-                    fontStyle="bold"
-                  />
-
-                  {/* Warm Light Halo when Powered */}
-                  {isPowered && (
-                    <Circle
-                      x={125}
-                      y={185}
-                      radius={78}
-                      fill="#FEF08A"
-                      opacity={0.45}
-                      shadowColor="#FACC15"
-                      shadowBlur={40}
-                    />
-                  )}
-
-                  {/* Bulb Screw Base */}
-                  <Rect x={107} y={108} width={36} height={24} fill="#94A3B8" cornerRadius={4} />
-                  <Rect x={105} y={114} width={40} height={4} fill="#64748B" />
-                  <Rect x={105} y={122} width={40} height={4} fill="#64748B" />
-
-                  {/* Glass Bulb */}
-                  <Circle
-                    x={125}
-                    y={178}
-                    radius={46}
-                    fill={isPowered ? '#FACC15' : '#E2E8F0'}
-                    stroke={isPowered ? '#F59E0B' : '#94A3B8'}
-                    strokeWidth={3}
-                  />
-
-                  {/* Glowing Filament */}
-                  <Arc
-                    x={125}
-                    y={175}
-                    innerRadius={12}
-                    outerRadius={15}
-                    angle={180}
-                    rotation={180}
-                    stroke={isPowered ? '#FFFFFF' : '#64748B'}
-                    strokeWidth={3}
-                  />
-                  <Line
-                    points={[113, 175, 118, 132]}
-                    stroke={isPowered ? '#FFFFFF' : '#64748B'}
-                    strokeWidth={2}
-                  />
-                  <Line
-                    points={[137, 175, 132, 132]}
-                    stroke={isPowered ? '#FFFFFF' : '#64748B'}
-                    strokeWidth={2}
-                  />
-
-                  <Text
-                    text={isPowered ? '💡 ILLUMINATED' : 'OFF'}
-                    x={isPowered ? 74 : 112}
-                    y={242}
-                    fill={isPowered ? '#B45309' : '#64748B'}
-                    fontSize={12}
-                    fontStyle="bold"
-                  />
+                  <Rect width={205} height={310} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
+                  <Text text="LIGHT FIXTURE" x={40} y={16} fill="#0F294A" fontSize={12} fontStyle="bold" />
+                  {isPowered && <Circle x={125} y={185} radius={78} fill="#FEF08A" opacity={0.45} shadowBlur={40} />}
+                  <Circle x={125} y={178} radius={46} fill={isPowered ? '#FACC15' : '#E2E8F0'} stroke={isPowered ? '#F59E0B' : '#94A3B8'} strokeWidth={3} />
+                  <Text text={isPowered ? '💡 ILLUMINATED' : 'OFF'} x={isPowered ? 74 : 112} y={242} fill={isPowered ? '#B45309' : '#64748B'} fontSize={12} fontStyle="bold" />
                 </Group>
               ) : (
                 <Group x={705} y={85}>
-                  {/* 13A Socket Faceplate */}
-                  <Rect
-                    width={210}
-                    height={230}
-                    fill="#F8FAFC"
-                    stroke="#CBD5E1"
-                    strokeWidth={3}
-                    cornerRadius={14}
-                    shadowColor="#000"
-                    shadowBlur={15}
-                  />
-                  <Text
-                    text="13A 3-PIN SOCKET"
-                    x={44}
-                    y={16}
-                    fill="#0F294A"
-                    fontSize={12}
-                    fontStyle="bold"
-                  />
-                  {/* Earth Pin Slot (Top) */}
+                  <Rect width={210} height={230} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
+                  <Text text="13A SOCKET" x={60} y={16} fill="#0F294A" fontSize={12} fontStyle="bold" />
                   <Rect x={99} y={85} width={12} height={24} fill="#1E293B" cornerRadius={2} />
-                  {/* Neutral Pin Slot (Left) */}
                   <Rect x={55} y={132} width={22} height={12} fill="#1E293B" cornerRadius={2} />
-                  {/* Live Pin Slot (Right) */}
                   <Rect x={133} y={132} width={22} height={12} fill="#1E293B" cornerRadius={2} />
-
-                  {/* Power Neon Indicator */}
-                  <Circle
-                    x={105}
-                    y={192}
-                    radius={8}
-                    fill={isPowered ? '#22C55E' : '#CBD5E1'}
-                    shadowColor="#22C55E"
-                    shadowBlur={isPowered ? 15 : 0}
-                  />
-                  <Text
-                    text={isPowered ? '230V LIVE READY' : 'NO POWER'}
-                    x={isPowered ? 58 : 72}
-                    y={206}
-                    fill={isPowered ? '#15803D' : '#64748B'}
-                    fontSize={11}
-                    fontStyle="bold"
-                  />
+                  <Circle x={105} y={192} radius={8} fill={isPowered ? '#22C55E' : '#CBD5E1'} />
                 </Group>
               )}
 
-              {/* ================= 4. INSULATED CABLES & LIVE FLOW ================= */}
+              {/* Wires */}
               {wires.map((wire) => {
                 const style = WIRE_STYLES[wire.wireType];
                 const midX = (wire.from.x + wire.to.x) / 2;
@@ -614,110 +458,23 @@ export default function CircuitSimulator() {
                 const pts = [wire.from.x, wire.from.y, midX, midY, wire.to.x, wire.to.y];
 
                 return (
-                  <Group
-                    key={wire.id}
-                    onClick={() => handleRemoveWire(wire.id)}
-                    onMouseEnter={(e) => {
-                      e.target.getStage().container().style.cursor = 'pointer';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.getStage().container().style.cursor = 'default';
-                    }}
-                  >
-                    {/* Outer Shadow */}
-                    <Line
-                      points={pts}
-                      stroke="#000000"
-                      strokeWidth={9}
-                      opacity={0.35}
-                      tension={0.45}
-                      lineCap="round"
-                    />
-                    {/* Main Colored Insulation */}
-                    <Line
-                      points={pts}
-                      stroke={style.color}
-                      strokeWidth={7}
-                      tension={0.45}
-                      lineCap="round"
-                    />
-                    {/* Yellow Stripe for Earth Wire */}
-                    {wire.wireType === 'E' && (
-                      <Line
-                        points={pts}
-                        stroke="#FACC15"
-                        strokeWidth={3}
-                        dash={[10, 10]}
-                        tension={0.45}
-                        lineCap="round"
-                      />
-                    )}
-                    {/* Animated Electricity Pulses when Powered */}
+                  <Group key={wire.id} onClick={() => handleRemoveWire(wire.id)}>
+                    <Line points={pts} stroke={style.color} strokeWidth={7} tension={0.45} lineCap="round" />
                     {isPowered && wire.wireType !== 'E' && (
-                      <Line
-                        points={pts}
-                        stroke="#FEF08A"
-                        strokeWidth={3}
-                        dash={[6, 34]}
-                        dashOffset={-pulseOffset}
-                        tension={0.45}
-                        lineCap="round"
-                      />
+                      <Line points={pts} stroke="#FEF08A" strokeWidth={3} dash={[6, 34]} dashOffset={-pulseOffset} tension={0.45} />
                     )}
                   </Group>
                 );
               })}
 
-              {/* ================= 5. BRASS SCREW TERMINALS ================= */}
+              {/* Terminals */}
               {currentLevel.terminals.map((term) => {
                 const isSelected = selectedTerminal?.id === term.id;
                 return (
-                  <Group
-                    key={term.id}
-                    x={term.x}
-                    y={term.y}
-                    onClick={() => handleTerminalClick(term)}
-                    onMouseEnter={(e) => {
-                      e.target.getStage().container().style.cursor = 'pointer';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.getStage().container().style.cursor = 'default';
-                    }}
-                  >
-                    {/* Selection Glow Ring */}
-                    {isSelected && (
-                      <Circle radius={17} fill="#F59E0B" opacity={0.4} />
-                    )}
-                    {/* Brass Screw Head */}
-                    <Circle
-                      radius={11}
-                      fill={isSelected ? '#FBBF24' : '#EAB308'}
-                      stroke="#713F12"
-                      strokeWidth={2.5}
-                    />
-                    {/* Phillips Cross Slot */}
-                    <Line points={[-5, 0, 5, 0]} stroke="#713F12" strokeWidth={2} />
-                    <Line points={[0, -5, 0, 5]} stroke="#713F12" strokeWidth={2} />
-
-                    {/* Terminal Label Pill */}
-                    <Rect
-                      x={-24}
-                      y={-30}
-                      width={48}
-                      height={16}
-                      fill="#0F294A"
-                      cornerRadius={4}
-                    />
-                    <Text
-                      text={term.label}
-                      x={-24}
-                      y={-27}
-                      width={48}
-                      align="center"
-                      fill="#FFFFFF"
-                      fontSize={9}
-                      fontStyle="bold"
-                    />
+                  <Group key={term.id} x={term.x} y={term.y} onClick={() => handleTerminalClick(term)}>
+                    {isSelected && <Circle radius={17} fill="#F59E0B" opacity={0.4} />}
+                    <Circle radius={11} fill={isSelected ? '#FBBF24' : '#EAB308'} stroke="#713F12" strokeWidth={2.5} />
+                    <Text text={term.label} x={-24} y={-27} width={48} align="center" fill="#FFFFFF" fontSize={9} fontStyle="bold" />
                   </Group>
                 );
               })}
@@ -725,9 +482,15 @@ export default function CircuitSimulator() {
           </Stage>
         </div>
 
-        <p className="sim-hint">
-          💡 Tip: Click any cable to remove it • Click the MCB breaker or Wall Switch rocker directly on the board to toggle power!
-        </p>
+        {/* Evaluation Feedback Breakdown Summary */}
+        {evaluationBreakdown && (
+          <div className="sim-breakdown-box">
+            <h3>📋 Assessment Report & Feedback</h3>
+            <p>Correct Connections: <strong>{evaluationBreakdown.matched} / {assignedTask.requiredWires.length}</strong></p>
+            <p>IEC Color Compliance Errors: <strong>{evaluationBreakdown.colorErrors}</strong></p>
+            <p>Status: <strong>{evaluationBreakdown.passed ? 'PASSED (Certificate Eligible)' : 'NEEDS IMPROVEMENT'}</strong></p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,22 +1,51 @@
 using Microsoft.AspNetCore.Mvc;
-
-namespace ElectroSL_Backend.Controllers;
+using ElectroSL_Backend.Models;
+using ElectroSL_Backend.Data;
 
 [Route("api/[controller]")]
 [ApiController]
 public class MockPaymentController : ControllerBase
 {
-    [HttpPost("process")]
-    public IActionResult ProcessPayment([FromBody] decimal amount)
+    private readonly ApplicationDbContext _context;
+
+    public MockPaymentController(ApplicationDbContext context)
     {
-        decimal platformFee = amount * 0.15m;
-        decimal electricianEarning = amount * 0.85m;
-        
-        return Ok(new 
-        { 
-            Success = true, 
-            PlatformFee = platformFee, 
-            ElectricianEarning = electricianEarning 
+        _context = context;
+    }
+
+    [HttpPost("process")]
+    public async Task<IActionResult> ProcessPayment([FromBody] PaymentRequestDto dto)
+    {
+        // 15% platform commission split calculation
+        decimal platformCommission = dto.TotalAmount * 0.15m;
+        decimal electricianEarning = dto.TotalAmount - platformCommission;
+
+        var transaction = new PaymentTransaction
+        {
+            JobId = dto.JobId,
+            TotalAmount = dto.TotalAmount,
+            PlatformCommission = platformCommission,
+            ElectricianEarning = electricianEarning,
+            PaymentMethod = "MockGateway",
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        _context.PaymentTransactions.Add(transaction);
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            message = "Payment split processed successfully",
+            transactionId = transaction.TransactionId,
+            commission = platformCommission,
+            earning = electricianEarning
         });
     }
+}
+
+public class PaymentRequestDto
+{
+    public int JobId { get; set; }
+    public decimal TotalAmount { get; set; }
 }
