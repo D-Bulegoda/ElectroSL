@@ -35,6 +35,14 @@ if exist "%~dp0ElectroSL-FrontEnd" (
     echo [!] Folder ElectroSL-FrontEnd not found. Check folder name.
 )
 
+if exist "G:\xampp\mysql\bin\mysqld.exe" (
+        start "" /B "G:\xampp\mysql\bin\mysqld.exe"
+        echo [OK] Started XAMPP MySQL Database.
+    ) else (
+        echo [!] XAMPP MySQL not found at G:\xampp\mysql\bin\mysqld.exe - start it manually if needed.
+    )
+
+    
 :: 4. Wait 5 seconds for servers to initialize, then open browser
 echo.
 echo Opening http://localhost:5173 in 5 seconds...
