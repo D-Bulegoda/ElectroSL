@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace ElectroSL_Backend.Models;
@@ -11,4 +13,7 @@ public class EquipmentCatalog
     public string Specification { get; set; } = string.Empty;
     public decimal StandardMarketPrice { get; set; }
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+
+    // Navigation Property
+    public ICollection<JobUsedEquipment> JobUsedEquipments { get; set; } = new List<JobUsedEquipment>();
 }

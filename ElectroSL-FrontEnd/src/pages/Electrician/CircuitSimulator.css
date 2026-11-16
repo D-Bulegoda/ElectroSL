@@ -1,0 +1,233 @@
+.sim-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0b192c 0%, #102a43 100%);
+  color: #f8fafc;
+  padding: 24px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.sim-wrapper {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+/* Header */
+.sim-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.sim-title-group h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sim-title-group p {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  color: #93c5fd;
+}
+
+.sim-header-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sim-level-tabs {
+  display: flex;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px;
+  border-radius: 10px;
+  gap: 4px;
+}
+
+.sim-level-btn {
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #cbd5e1;
+  background: transparent;
+  transition: all 0.15s;
+}
+
+.sim-level-btn.active {
+  background: #f59e0b;
+  color: #0f294a;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.sim-score-pill {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 15px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.sim-score-pill.fail {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Toolbar */
+.sim-toolbar {
+  background: #ffffff;
+  color: #0f294a;
+  border-radius: 14px;
+  padding: 14px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+}
+
+.sim-wire-selector {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sim-wire-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wire-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  border: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.wire-btn.selected {
+  transform: scale(1.06);
+  border-color: #0f294a;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.6);
+}
+
+.wire-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+}
+
+.sim-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-clear {
+  background: #e2e8f0;
+  color: #1e293b;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-clear:hover {
+  background: #cbd5e1;
+}
+
+.btn-test {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0f294a;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+}
+
+.btn-test:hover {
+  filter: brightness(1.05);
+}
+
+.btn-submit-score {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Status Alert Bar */
+.sim-status {
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  color: #e0f2fe;
+}
+
+.sim-status.success {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #34d399;
+  color: #a7f3d0;
+}
+
+.sim-status.danger {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+/* Canvas Board Container */
+.sim-canvas-box {
+  background: #1e293b;
+  border-radius: 16px;
+  padding: 12px;
+  border: 2px solid #334155;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  overflow-x: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.sim-hint {
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 12px;
+}

@@ -31,7 +31,8 @@ namespace ElectroSL_Backend.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ProfileId"));
 
                     b.Property<decimal>("AppWalletBalance")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<double>("CurrentLat")
                         .HasColumnType("double");
@@ -45,18 +46,45 @@ namespace ElectroSL_Backend.Migrations
                     b.Property<bool>("IsOnline")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<string>("NicDocumentUrl")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasDefaultValue("");
+
                     b.Property<string>("NvqCertificateUrl")
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ReviewedByAdminId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Specialization")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+                    b.Property<string>("VerificationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasDefaultValue("Pending");
+
                     b.HasKey("ProfileId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
                     b.ToTable("ElectricianProfiles");
                 });
@@ -71,21 +99,25 @@ namespace ElectroSL_Backend.Migrations
 
                     b.Property<string>("BrandName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("Category")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("Specification")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
 
                     b.Property<decimal>("StandardMarketPrice")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("ItemId");
 
@@ -115,14 +147,16 @@ namespace ElectroSL_Backend.Migrations
 
                     b.Property<string>("FinalApprovalOTP")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
 
                     b.Property<bool>("IsEmergency")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("JobType")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
 
                     b.Property<double>("LocationLat")
                         .HasColumnType("double");
@@ -132,17 +166,23 @@ namespace ElectroSL_Backend.Migrations
 
                     b.Property<string>("StartOTP")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
 
                     b.Property<string>("VoiceNoteUrl")
                         .IsRequired()
                         .HasColumnType("longtext");
 
                     b.HasKey("JobId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("ElectricianId");
 
                     b.ToTable("Jobs");
                 });
@@ -159,7 +199,8 @@ namespace ElectroSL_Backend.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("EstimatedAmount")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("JobId")
                         .HasColumnType("int");
@@ -173,6 +214,10 @@ namespace ElectroSL_Backend.Migrations
 
                     b.HasKey("BidId");
 
+                    b.HasIndex("ElectricianId");
+
+                    b.HasIndex("JobId");
+
                     b.ToTable("JobBids");
                 });
 
@@ -184,12 +229,17 @@ namespace ElectroSL_Backend.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("CatalogItemId")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("ClaimedPrice")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("ItemName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
 
                     b.Property<int>("JobId")
                         .HasColumnType("int");
@@ -202,9 +252,14 @@ namespace ElectroSL_Backend.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<decimal>("VariancePercentage")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CatalogItemId");
+
+                    b.HasIndex("JobId");
 
                     b.ToTable("JobUsedEquipments");
                 });
@@ -218,25 +273,32 @@ namespace ElectroSL_Backend.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("TransactionId"));
 
                     b.Property<decimal>("ElectricianEarning")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("JobId")
                         .HasColumnType("int");
 
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<decimal>("PlatformCommission")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("ProcessedAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("TransactionId");
+
+                    b.HasIndex("JobId")
+                        .IsUnique();
 
                     b.ToTable("PaymentTransactions");
                 });
@@ -260,9 +322,15 @@ namespace ElectroSL_Backend.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Rating")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(3, 2)
+                        .HasColumnType("decimal(3,2)");
 
                     b.HasKey("ReviewId");
+
+                    b.HasIndex("ElectricianId");
+
+                    b.HasIndex("JobId")
+                        .IsUnique();
 
                     b.ToTable("Reviews");
                 });
@@ -295,6 +363,8 @@ namespace ElectroSL_Backend.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ElectricianId");
+
                     b.ToTable("SimulatorResults");
                 });
 
@@ -311,23 +381,182 @@ namespace ElectroSL_Backend.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<bool>("IsPhoneVerified")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("OtpCodeHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime?>("OtpExpiryUtc")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
 
                     b.HasKey("UserId");
 
+                    b.HasIndex("Email")
+                        .IsUnique();
+
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.ElectricianProfile", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.User", "User")
+                        .WithOne("ElectricianProfile")
+                        .HasForeignKey("ElectroSL_Backend.Models.ElectricianProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.Job", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.User", "Customer")
+                        .WithMany("CustomerJobs")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ElectroSL_Backend.Models.User", "Electrician")
+                        .WithMany("AssignedJobs")
+                        .HasForeignKey("ElectricianId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Electrician");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.JobBid", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.User", "Electrician")
+                        .WithMany("JobBids")
+                        .HasForeignKey("ElectricianId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ElectroSL_Backend.Models.Job", "Job")
+                        .WithMany("JobBids")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Electrician");
+
+                    b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.JobUsedEquipment", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.EquipmentCatalog", "EquipmentCatalog")
+                        .WithMany("JobUsedEquipments")
+                        .HasForeignKey("CatalogItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ElectroSL_Backend.Models.Job", "Job")
+                        .WithMany("JobUsedEquipments")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("EquipmentCatalog");
+
+                    b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.PaymentTransaction", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.Job", "Job")
+                        .WithOne("PaymentTransaction")
+                        .HasForeignKey("ElectroSL_Backend.Models.PaymentTransaction", "JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.Review", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.User", "Electrician")
+                        .WithMany("ReviewsReceived")
+                        .HasForeignKey("ElectricianId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ElectroSL_Backend.Models.Job", "Job")
+                        .WithOne("Review")
+                        .HasForeignKey("ElectroSL_Backend.Models.Review", "JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Electrician");
+
+                    b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.SimulatorResult", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.User", "Electrician")
+                        .WithMany("SimulatorResults")
+                        .HasForeignKey("ElectricianId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Electrician");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.EquipmentCatalog", b =>
+                {
+                    b.Navigation("JobUsedEquipments");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.Job", b =>
+                {
+                    b.Navigation("JobBids");
+
+                    b.Navigation("JobUsedEquipments");
+
+                    b.Navigation("PaymentTransaction");
+
+                    b.Navigation("Review");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.User", b =>
+                {
+                    b.Navigation("AssignedJobs");
+
+                    b.Navigation("CustomerJobs");
+
+                    b.Navigation("ElectricianProfile");
+
+                    b.Navigation("JobBids");
+
+                    b.Navigation("ReviewsReceived");
+
+                    b.Navigation("SimulatorResults");
                 });
 #pragma warning restore 612, 618
         }
