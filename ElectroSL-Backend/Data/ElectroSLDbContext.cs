@@ -39,6 +39,8 @@ public class ElectroSLDbContext : DbContext
             entity.HasKey(ep => ep.ProfileId);
             entity.Property(ep => ep.AppWalletBalance).HasPrecision(18, 2);
             entity.Property(ep => ep.Specialization).HasMaxLength(100);
+            entity.Property(ep => ep.NicDocumentUrl).HasMaxLength(500).HasDefaultValue(string.Empty);
+            entity.Property(ep => ep.VerificationStatus).HasMaxLength(50).HasDefaultValue("Pending");
 
             entity.HasOne(ep => ep.User)
                   .WithOne(u => u.ElectricianProfile)
@@ -102,6 +104,13 @@ public class ElectroSLDbContext : DbContext
             entity.HasOne(jue => jue.Job)
                   .WithMany(j => j.JobUsedEquipments)
                   .HasForeignKey(jue => jue.JobId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            // EquipmentCatalog (1-to-Many JobUsedEquipment, Optional) - Restrict delete behavior
+            entity.HasOne(jue => jue.EquipmentCatalog)
+                  .WithMany(ec => ec.JobUsedEquipments)
+                  .HasForeignKey(jue => jue.CatalogItemId)
+                  .IsRequired(false)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
