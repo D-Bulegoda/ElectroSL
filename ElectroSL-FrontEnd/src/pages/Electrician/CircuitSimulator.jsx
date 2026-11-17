@@ -8,11 +8,12 @@ const WIRE_STYLES = {
   E: { name: 'Earth (Green/Yellow) / පෘථිවි', color: '#15803D', highlight: '#FACC15' },
 };
 
-const TASK_BANK = [
+// Preliminary Task Pool (2 of these will be randomly selected first)
+const PRELIMINARY_TASKS = [
   {
     id: 'TASK_LIGHT_SINGLE',
-    titleEn: 'Task 1: Single-Way Lighting & Earth Bonding',
-    titleSinhala: 'කාර්යය 1: ආලෝකකරණ පරිපථය සහ පෘථිවි සම්බන්ධතාව',
+    titleEn: 'Single-Way Lighting & Earth Bonding',
+    titleSinhala: 'ආලෝකකරණ පරිපථය සහ පෘථිවි සම්බන්ධතාව',
     descEn: 'Connect Live through MCB and Wall Switch (COM → L1) to Bulb L. Connect Neutral and Earth securely.',
     descSinhala: 'MCB සහ බිත්ති ස්විචය (COM → L1) හරහා බල්බ් L වෙත ජීවී කම්බිය සම්බන්ධ කරන්න. උදාසීන සහ පෘථිවි කම්බි නිවැරදිව සවි කරන්න.',
     level: 1,
@@ -25,8 +26,8 @@ const TASK_BANK = [
   },
   {
     id: 'TASK_SOCKET_13A',
-    titleEn: 'Task 2: 13A Switched Socket Outlet Polarity Wiring',
-    titleSinhala: 'කාර්යය 2: 13A ස්විච් සොකට් අලෙවිසැල් රැහැන්ගත කිරීම',
+    titleEn: '13A Switched Socket Outlet Polarity Wiring',
+    titleSinhala: '13A ස්විච් සොකට් අලෙවිසැල් රැහැන්ගත කිරීම',
     descEn: 'Wire directly from MCB to the 13A Switched Socket: Live to L (Right), Neutral to N (Left), Earth to E (Top).',
     descSinhala: 'MCB සිට 13A සොකට් එකට කෙලින්ම කම්බි සම්බන්ධ කරන්න: දකුණට ජීවී (L), වමට උදාසීන (N), ඉහළට පෘථිවි (E).',
     level: 2,
@@ -38,8 +39,8 @@ const TASK_BANK = [
   },
   {
     id: 'TASK_TWO_WAY_STAIRCASE',
-    titleEn: 'Task 3: Two-Way Staircase Lighting Control',
-    titleSinhala: 'කාර්යය 3: පඩිපෙළ ආලෝක පාලනය (Two-Way Switching)',
+    titleEn: 'Two-Way Staircase Lighting Control',
+    titleSinhala: 'පඩිපෙළ ආලෝක පාලනය (Two-Way Switching)',
     descEn: 'Connect MCB Live to Switch 1 COM. Bridge L1-to-L1 and L2-to-L2 strappers between switches, then Switch 2 COM to Bulb L.',
     descSinhala: 'MCB ජීවී කම්බිය පළමු ස්විචයේ COM වෙත ද, L1 සහ L2 ස්විච් දෙක අතර ද සම්බන්ධ කර දෙවන ස්විචයේ COM සිට බල්බයට සම්බන්ධ කරන්න.',
     level: 3,
@@ -54,8 +55,8 @@ const TASK_BANK = [
   },
   {
     id: 'TASK_DP_ISOLATOR_AC',
-    titleEn: 'Task 4: Double-Pole (DP) Isolator for Heavy AC Load',
-    titleSinhala: 'කාර්යය 4: වායු සමීකරණ (AC) සඳහා ද්වි-ධ්‍රැව (DP) ස්විචය සවි කිරීම',
+    titleEn: 'Double-Pole (DP) Isolator for Heavy AC Load',
+    titleSinhala: 'වායු සමීකරණ (AC) සඳහා ද්වි-ධ්‍රැව (DP) ස්විචය සවි කිරීම',
     descEn: 'Route both Live and Neutral through the 32A Double-Pole Isolator before feeding the AC Unit, plus direct Earth bonding.',
     descSinhala: 'AC ඒකකයට විදුලිය දීමට පෙර ජීවී සහ උදාසීන කම්බි දෙකම 32A DP ස්විචය හරහා සම්බන්ධ කර පෘථිවි කම්බිය සවි කරන්න.',
     level: 4,
@@ -68,6 +69,36 @@ const TASK_BANK = [
     ],
   },
 ];
+
+// Mandatory Final Task for Every Electrician (Master Bedroom Multi-Load Wiring from Diagram)
+const FINAL_MASTER_ROOM_TASK = {
+  id: 'TASK_FINAL_MASTER_ROOM',
+  titleEn: 'Final Task: Master Bedroom Complete Sub-Circuit (2 Lights, Ceiling Fan & 13A Socket)',
+  titleSinhala: 'අවසාන කාර්යය: ප්‍රධාන නිදන කාමරයේ සම්පූර්ණ රැහැන්ගත කිරීම (විදුලි පහන් 2, විදුලි පංකාව සහ 13A සොකට්)',
+  descEn:
+    'Wire MCB L(Light) to 2-Gang COM and loop to Fan Reg IN. Connect L1→Light 1, L2→Light 2, Reg OUT→Fan L. Wire MCB L(Power)→Socket L. Connect Neutral to all 4 loads & Earth to Fan + Socket.',
+  descSinhala:
+    'MCB L(Light) සිට 2-Gang COM සහ Fan Regulator IN වෙත සම්බන්ධ කරන්න. L1→Light 1, L2→Light 2, Reg OUT→Fan L සම්බන්ධ කරන්න. MCB L(Power)→Socket L වෙතද, උදාසීන (N) සියලු උපාංග වෙතද, පෘථිවි (E) විදුලි පංකාව සහ සොකට් එකටද සවි කරන්න.',
+  level: 5,
+  requiredWires: [
+    // Lighting & Fan Live distribution
+    { from: 'MAIN_L', to: 'G2_COM', type: 'L' },
+    { from: 'G2_COM', to: 'REG_IN', type: 'L' },
+    { from: 'G2_L1', to: 'LP1_L', type: 'L' },
+    { from: 'G2_L2', to: 'LP2_L', type: 'L' },
+    { from: 'REG_OUT', to: 'FAN_L', type: 'L' },
+    // 13A Socket Power MCB Live
+    { from: 'MAIN_L_PWR', to: 'SOCK_L', type: 'L' },
+    // Neutral Distribution (Allows direct from N-Bar or clean loop-in)
+    { from: 'MAIN_N', to: 'LP1_N', type: 'N' },
+    { from: 'MAIN_N', to: 'FAN_N', type: 'N' },
+    { from: 'MAIN_N', to: 'LP2_N', type: 'N' },
+    { from: 'MAIN_N', to: 'SOCK_N', type: 'N' },
+    // Earth Bonding
+    { from: 'MAIN_E', to: 'FAN_E', type: 'E' },
+    { from: 'MAIN_E', to: 'SOCK_E', type: 'E' },
+  ],
+};
 
 const LEVELS = {
   1: {
@@ -89,7 +120,6 @@ const LEVELS = {
       { id: 'MAIN_L', label: 'L IN', x: 145, y: 145, type: 'L' },
       { id: 'MAIN_N', label: 'N BAR', x: 145, y: 235, type: 'N' },
       { id: 'MAIN_E', label: 'E BAR', x: 145, y: 325, type: 'E' },
-      // Direct terminals on the 13A Switched Socket (No separate wall switch)
       { id: 'SOCK_E', label: 'E (TOP)', x: 650, y: 145, type: 'E' },
       { id: 'SOCK_N', label: 'N (LEFT)', x: 590, y: 245, type: 'N' },
       { id: 'SOCK_L', label: 'L (RIGHT)', x: 710, y: 245, type: 'L' },
@@ -127,6 +157,41 @@ const LEVELS = {
       { id: 'AC_E', label: 'AC E', x: 765, y: 325, type: 'E' },
     ],
   },
+  5: {
+    title: 'Level 5: Master Bedroom Complete Multi-Load Sub-Circuit',
+    terminals: [
+      // Consumer Unit Terminals (Left)
+      { id: 'MAIN_L', label: 'MCB L(LIGHT)', x: 140, y: 130, type: 'L' },
+      { id: 'MAIN_L_PWR', label: 'MCB L(PWR)', x: 140, y: 195, type: 'L' },
+      { id: 'MAIN_N', label: 'N BUSBAR', x: 140, y: 270, type: 'N' },
+      { id: 'MAIN_E', label: 'E BUSBAR', x: 140, y: 345, type: 'E' },
+
+      // 1-Way 2-Gang Switch (Middle Top)
+      { id: 'G2_COM', label: '2G COM', x: 310, y: 230, type: 'L' },
+      { id: 'G2_L1', label: '2G L1', x: 375, y: 210, type: 'L' },
+      { id: 'G2_L2', label: '2G L2', x: 375, y: 255, type: 'L' },
+
+      // Fan Regulator with Switch (Middle Bottom)
+      { id: 'REG_IN', label: 'REG IN', x: 310, y: 350, type: 'L' },
+      { id: 'REG_OUT', label: 'REG OUT', x: 385, y: 350, type: 'L' },
+
+      // Top Ceiling Loads: Light Point 1, Ceiling Fan, Light Point 2
+      { id: 'LP1_L', label: 'LP1 L', x: 500, y: 125, type: 'L' },
+      { id: 'LP1_N', label: 'LP1 N', x: 555, y: 125, type: 'N' },
+
+      { id: 'FAN_L', label: 'FAN L', x: 650, y: 125, type: 'L' },
+      { id: 'FAN_N', label: 'FAN N', x: 705, y: 125, type: 'N' },
+      { id: 'FAN_E', label: 'FAN E', x: 760, y: 125, type: 'E' },
+
+      { id: 'LP2_L', label: 'LP2 L', x: 845, y: 125, type: 'L' },
+      { id: 'LP2_N', label: 'LP2 N', x: 900, y: 125, type: 'N' },
+
+      // Bottom Right: 13A Switched Socket Outlet
+      { id: 'SOCK_E', label: 'SOCK E', x: 750, y: 265, type: 'E' },
+      { id: 'SOCK_N', label: 'SOCK N', x: 695, y: 345, type: 'N' },
+      { id: 'SOCK_L', label: 'SOCK L', x: 805, y: 345, type: 'L' },
+    ],
+  },
 };
 
 export default function CircuitSimulator() {
@@ -139,7 +204,7 @@ export default function CircuitSimulator() {
   const [taskResults, setTaskResults] = useState([]);
   const [isAssessmentFinished, setIsAssessmentFinished] = useState(false);
 
-  const [assignedTask, setAssignedTask] = useState(TASK_BANK[0]);
+  const [assignedTask, setAssignedTask] = useState(PRELIMINARY_TASKS[0]);
   const [level, setLevel] = useState(1);
   const [selectedWireType, setSelectedWireType] = useState('L');
   const [selectedTerminal, setSelectedTerminal] = useState(null);
@@ -176,13 +241,16 @@ export default function CircuitSimulator() {
       }
     }
 
-    const shuffled = [...TASK_BANK].sort(() => Math.random() - 0.5).slice(0, 3);
-    setTaskQueue(shuffled);
-    setAssignedTask(shuffled[0]);
-    setLevel(shuffled[0].level);
+    // Pick 2 random preliminary tasks + always append FINAL_MASTER_ROOM_TASK as Task 3
+    const randomTwo = [...PRELIMINARY_TASKS].sort(() => Math.random() - 0.5).slice(0, 2);
+    const fullQueue = [...randomTwo, FINAL_MASTER_ROOM_TASK];
+
+    setTaskQueue(fullQueue);
+    setAssignedTask(fullQueue[0]);
+    setLevel(fullQueue[0].level);
     setStatus({
       type: 'info',
-      text: `Task 1 of ${shuffled.length}: ${shuffled[0].titleEn} / ${shuffled[0].titleSinhala}`,
+      text: `Task 1 of ${fullQueue.length}: ${fullQueue[0].titleEn} / ${fullQueue[0].titleSinhala}`,
     });
 
     checkVerificationStatus();
@@ -257,6 +325,32 @@ export default function CircuitSimulator() {
       (w) => (w.from.id === id1 && w.to.id === id2) || (w.from.id === id2 && w.to.id === id1)
     );
 
+  // Graph connectivity helper so chained Neutral/Earth/Live busbars are evaluated accurately
+  const findConnectedWireChain = (sourceId, targetId) => {
+    const direct = findWire(sourceId, targetId);
+    if (direct) return direct;
+
+    // Allow daisy-chained Neutral/Earth/Live loops between same-polarity terminals
+    const visited = new Set();
+    const queue = [sourceId];
+    let lastEdge = null;
+
+    while (queue.length > 0) {
+      const curr = queue.shift();
+      if (curr === targetId) return lastEdge;
+      visited.add(curr);
+
+      for (const w of wires) {
+        const next = w.from.id === curr ? w.to.id : w.to.id === curr ? w.from.id : null;
+        if (next && !visited.has(next)) {
+          lastEdge = w;
+          queue.push(next);
+        }
+      }
+    }
+    return null;
+  };
+
   const evaluateCircuit = (breakerState, switchState) => {
     if (!breakerState) {
       setIsPowered(false);
@@ -265,13 +359,20 @@ export default function CircuitSimulator() {
       return;
     }
 
-    if (
+    // Check direct Live-to-Neutral or Live-to-Earth short circuit faults
+    const hasShort =
       findWire('MAIN_L', 'MAIN_N') ||
       findWire('MAIN_L', 'MAIN_E') ||
+      findWire('MAIN_L_PWR', 'MAIN_N') ||
+      findWire('MAIN_L_PWR', 'MAIN_E') ||
       findWire('SW_L1', 'MAIN_N') ||
       findWire('DP_L_OUT', 'DP_N_OUT') ||
-      findWire('SOCK_L', 'SOCK_N')
-    ) {
+      findWire('SOCK_L', 'SOCK_N') ||
+      findWire('LP1_L', 'LP1_N') ||
+      findWire('FAN_L', 'FAN_N') ||
+      findWire('LP2_L', 'LP2_N');
+
+    if (hasShort) {
       setIsBreakerOn(false);
       setIsPowered(false);
       setIsShortCircuit(true);
@@ -280,6 +381,7 @@ export default function CircuitSimulator() {
         shortCircuit: true,
         matched: 0,
         colorErrors: 0,
+        extraWires: 0,
         passed: false,
       });
       setStatus({
@@ -299,7 +401,12 @@ export default function CircuitSimulator() {
     let colorErrors = 0;
 
     assignedTask.requiredWires.forEach((req) => {
-      const activeWire = findWire(req.from, req.to);
+      // Support both direct wiring and loop-in daisy-chaining for Level 5 busbars
+      const activeWire =
+        level === 5 && (req.type === 'N' || req.type === 'E')
+          ? findConnectedWireChain(req.from, req.to)
+          : findWire(req.from, req.to);
+
       if (activeWire) {
         if (activeWire.wireType === req.type) {
           matchedWiresCount++;
@@ -309,7 +416,6 @@ export default function CircuitSimulator() {
       }
     });
 
-    // Penalize extra unintended jumper wires
     const extraWires = Math.max(0, wires.length - assignedTask.requiredWires.length);
     let calculatedScore = (matchedWiresCount / assignedTask.requiredWires.length) * 80;
     if (colorErrors === 0 && matchedWiresCount > 0) calculatedScore += 20;
@@ -331,7 +437,7 @@ export default function CircuitSimulator() {
       text:
         roundedScore >= 75
           ? `✅ TASK VERIFIED! Score: ${roundedScore}/100. Click "Next Task ➔" to continue.`
-          : `❌ INCOMPLETE / EXTRA WIRES! Score: ${roundedScore}/100. Fix wiring or click "Next Task ➔".`,
+          : `❌ INCOMPLETE / ERRORS! Score: ${roundedScore}/100 (${matchedWiresCount}/${assignedTask.requiredWires.length} connections).`,
     });
   };
 
@@ -542,7 +648,6 @@ export default function CircuitSimulator() {
             <button className="btn-test" onClick={handleToggleBreaker}>
               {isBreakerOn ? '🔴 Trip MCB OFF' : '⚡ Flip MCB ON'}
             </button>
-            {/* Always visible Next Task button so user can advance or skip anytime */}
             <button
               className="btn-submit-score"
               style={{
@@ -573,51 +678,47 @@ export default function CircuitSimulator() {
               <Rect x={25} y={195} width={910} height={24} fill="#334155" opacity={0.45} />
               <Rect x={25} y={201} width={910} height={12} fill="#475569" opacity={0.45} />
 
-              {/* ================= 1. MAIN CONSUMER UNIT (MCB) ================= */}
-              <Group x={35} y={65}>
+              {/* ================= 1. MAIN CONSUMER UNIT (MCB / RCD / BUSBARS) ================= */}
+              <Group x={25} y={55}>
                 <Rect
-                  width={150}
-                  height={310}
+                  width={155}
+                  height={330}
                   fill="#1E293B"
                   stroke="#64748B"
                   strokeWidth={3}
                   cornerRadius={12}
                 />
-                <Rect x={10} y={10} width={130} height={36} fill="#0F294A" cornerRadius={6} />
-                <Text text="230V MCB BOX" x={22} y={21} fill="#FBBF24" fontSize={13} fontStyle="bold" />
+                <Rect x={10} y={10} width={135} height={32} fill="#0F294A" cornerRadius={6} />
+                <Text text="CONSUMER UNIT" x={22} y={20} fill="#FBBF24" fontSize={12} fontStyle="bold" />
 
-                <Group x={22} y={62} onClick={handleToggleBreaker}>
+                <Group x={16} y={55} onClick={handleToggleBreaker}>
                   <Rect
-                    width={56}
-                    height={95}
+                    width={52}
+                    height={90}
                     fill="#E2E8F0"
                     stroke="#94A3B8"
                     strokeWidth={2}
                     cornerRadius={6}
                   />
-                  <Text text="C16" x={16} y={8} fill="#0F294A" fontSize={11} fontStyle="bold" />
-                  <Rect x={14} y={26} width={28} height={46} fill="#1E293B" cornerRadius={4} />
+                  <Text text="MCB" x={13} y={7} fill="#0F294A" fontSize={10} fontStyle="bold" />
+                  <Rect x={12} y={24} width={28} height={44} fill="#1E293B" cornerRadius={4} />
                   <Rect
-                    x={16}
-                    y={isBreakerOn ? 28 : 48}
+                    x={14}
+                    y={isBreakerOn ? 26 : 44}
                     width={24}
-                    height={22}
+                    height={20}
                     fill={isBreakerOn ? '#EF4444' : '#22C55E'}
                     cornerRadius={3}
                   />
                   <Text
-                    text={isBreakerOn ? 'I - ON' : 'O - OFF'}
-                    x={10}
-                    y={78}
+                    text={isBreakerOn ? 'I-ON' : 'O-OFF'}
+                    x={11}
+                    y={73}
                     fill={isBreakerOn ? '#DC2626' : '#16A34A'}
                     fontSize={10}
                     fontStyle="bold"
                   />
                 </Group>
-
-                <Rect x={86} y={70} width={20} height={20} fill="#9A3412" cornerRadius={4} />
-                <Rect x={86} y={160} width={20} height={20} fill="#1D4ED8" cornerRadius={4} />
-                <Rect x={86} y={250} width={20} height={20} fill="#15803D" cornerRadius={4} />
 
                 {isShortCircuit && (
                   <Group x={75} y={140}>
@@ -627,9 +728,8 @@ export default function CircuitSimulator() {
                 )}
               </Group>
 
-              {/* ================= 2. MIDDLE SWITCH HARDWARE (Levels 1, 3, 4 ONLY) ================= */}
+              {/* ================= 2. LEVEL 1, 3, 4 MIDDLE SWITCH HARDWARE ================= */}
               {level === 1 && (
-                /* Standard Single Wall Switch for Ceiling Light */
                 <Group x={385} y={85}>
                   <Rect width={180} height={180} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
                   <Text text="WALL SWITCH" x={42} y={16} fill="#475569" fontSize={12} fontStyle="bold" />
@@ -649,7 +749,6 @@ export default function CircuitSimulator() {
 
               {level === 3 && (
                 <>
-                  {/* Switch 1 (Bottom of Stairs) */}
                   <Group x={275} y={95}>
                     <Rect width={130} height={130} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={12} />
                     <Text text="SWITCH 1 (2-WAY)" x={14} y={12} fill="#475569" fontSize={10} fontStyle="bold" />
@@ -666,7 +765,6 @@ export default function CircuitSimulator() {
                     </Group>
                   </Group>
 
-                  {/* Switch 2 (Top of Stairs) */}
                   <Group x={480} y={95}>
                     <Rect width={130} height={130} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={12} />
                     <Text text="SWITCH 2 (2-WAY)" x={14} y={12} fill="#475569" fontSize={10} fontStyle="bold" />
@@ -677,7 +775,6 @@ export default function CircuitSimulator() {
               )}
 
               {level === 4 && (
-                /* 32A Double-Pole Isolator Switch */
                 <Group x={385} y={85}>
                   <Rect width={180} height={200} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
                   <Text text="32A DP ISOLATOR" x={32} y={16} fill="#DC2626" fontSize={12} fontStyle="bold" />
@@ -702,9 +799,54 @@ export default function CircuitSimulator() {
                 </Group>
               )}
 
-              {/* ================= 3. RIGHT LOAD HARDWARE ================= */}
+              {/* ================= 3. LEVEL 5 MASTER BEDROOM MULTI-LOAD HARDWARE ================= */}
+              {level === 5 && (
+                <>
+                  {/* 1-Way 2-Gang Switch */}
+                  <Group x={265} y={155}>
+                    <Rect width={150} height={125} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={10} />
+                    <Text text="1-WAY 2-GANG SW" x={18} y={10} fill="#0F294A" fontSize={10} fontStyle="bold" />
+                  </Group>
+
+                  {/* Fan Regulator with Switch */}
+                  <Group x={265} y={295}>
+                    <Rect width={150} height={95} fill="#DBEAFE" stroke="#93C5FD" strokeWidth={3} cornerRadius={10} />
+                    <Text text="FAN REGULATOR" x={24} y={10} fill="#1E3A8A" fontSize={10} fontStyle="bold" />
+                    <Circle x={85} y={55} radius={16} fill="#FFFFFF" stroke="#60A5FA" strokeWidth={2} />
+                  </Group>
+
+                  {/* Light Point 1 */}
+                  <Group x={475} y={35}>
+                    <Rect width={110} height={115} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={2} cornerRadius={10} />
+                    <Text text="LIGHT 1" x={30} y={10} fill="#0F294A" fontSize={10} fontStyle="bold" />
+                    <Circle x={55} y={52} radius={20} fill={isPowered ? '#FACC15' : '#E2E8F0'} stroke="#94A3B8" strokeWidth={2} />
+                  </Group>
+
+                  {/* Ceiling Fan */}
+                  <Group x={620} y={35}>
+                    <Rect width={170} height={115} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={2} cornerRadius={10} />
+                    <Text text="CEILING FAN" x={48} y={10} fill="#0F294A" fontSize={10} fontStyle="bold" />
+                    <Circle x={85} y={52} radius={22} fill={isPowered ? '#38BDF8' : '#1E293B'} />
+                  </Group>
+
+                  {/* Light Point 2 */}
+                  <Group x={820} y={35}>
+                    <Rect width={110} height={115} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={2} cornerRadius={10} />
+                    <Text text="LIGHT 2" x={30} y={10} fill="#0F294A" fontSize={10} fontStyle="bold" />
+                    <Circle x={55} y={52} radius={20} fill={isPowered ? '#FACC15' : '#E2E8F0'} stroke="#94A3B8" strokeWidth={2} />
+                  </Group>
+
+                  {/* 13A Switched Socket Outlet (Bottom Right) */}
+                  <Group x={655} y={220}>
+                    <Rect width={195} height={165} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={12} />
+                    <Text text="13A SOCKET OUTLET" x={36} y={12} fill="#0F294A" fontSize={10} fontStyle="bold" />
+                    <Circle x={98} y={85} radius={7} fill={isPowered ? '#22C55E' : '#CBD5E1'} />
+                  </Group>
+                </>
+              )}
+
+              {/* ================= 4. RIGHT LOAD HARDWARE (Levels 1, 2, 3, 4) ================= */}
               {(level === 1 || level === 3) && (
-                /* Ceiling Light Fixture */
                 <Group x={720} y={65}>
                   <Rect width={205} height={310} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
                   <Text text="LIGHT FIXTURE" x={40} y={16} fill="#0F294A" fontSize={12} fontStyle="bold" />
@@ -740,12 +882,10 @@ export default function CircuitSimulator() {
               )}
 
               {level === 2 && (
-                /* Sri Lankan BS 1363 13A Switched Socket Outlet (Built-in Rocker Switch on Faceplate) */
                 <Group x={520} y={70}>
                   <Rect width={280} height={260} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={16} />
                   <Text text="13A SWITCHED SOCKET (SL)" x={48} y={16} fill="#0F294A" fontSize={12} fontStyle="bold" />
 
-                  {/* Built-in Rocker Switch directly on Socket Outlet */}
                   <Group x={200} y={48} onClick={handleToggleWallSwitch}>
                     <Rect
                       width={48}
@@ -759,12 +899,10 @@ export default function CircuitSimulator() {
                     <Text text={isSwitchOn ? 'ON' : 'OFF'} x={12} y={24} fill="#0F294A" fontSize={11} fontStyle="bold" />
                   </Group>
 
-                  {/* 3-Pin BS 1363 Rectangular Slots */}
                   <Rect x={124} y={102} width={12} height={24} fill="#1E293B" cornerRadius={2} />
                   <Rect x={78} y={155} width={24} height={12} fill="#1E293B" cornerRadius={2} />
                   <Rect x={158} y={155} width={24} height={12} fill="#1E293B" cornerRadius={2} />
 
-                  {/* Power Status Indicator */}
                   <Circle x={130} y={212} radius={8} fill={isPowered ? '#22C55E' : '#CBD5E1'} />
                   <Text
                     text={isPowered ? '230V SOCKET LIVE' : 'SOCKET OFF / UNPOWERED'}
@@ -778,7 +916,6 @@ export default function CircuitSimulator() {
               )}
 
               {level === 4 && (
-                /* Heavy AC Outdoor/Indoor Unit Terminal Box */
                 <Group x={715} y={65}>
                   <Rect width={210} height={310} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
                   <Text text="240V AC UNIT LOAD" x={36} y={16} fill="#0F294A" fontSize={12} fontStyle="bold" />
@@ -795,11 +932,11 @@ export default function CircuitSimulator() {
                 </Group>
               )}
 
-              {/* ================= 4. INSULATED CABLES & LIVE FLOW ================= */}
+              {/* ================= 5. INSULATED CABLES & LIVE FLOW ================= */}
               {wires.map((wire) => {
                 const style = WIRE_STYLES[wire.wireType];
                 const midX = (wire.from.x + wire.to.x) / 2;
-                const midY = Math.max(wire.from.y, wire.to.y) + 42;
+                const midY = Math.max(wire.from.y, wire.to.y) + 32;
                 const pts = [wire.from.x, wire.from.y, midX, midY, wire.to.x, wire.to.y];
 
                 return (
@@ -813,15 +950,15 @@ export default function CircuitSimulator() {
                       e.target.getStage().container().style.cursor = 'default';
                     }}
                   >
-                    <Line points={pts} stroke="#000000" strokeWidth={9} opacity={0.35} tension={0.45} lineCap="round" />
-                    <Line points={pts} stroke={style.color} strokeWidth={7} tension={0.45} lineCap="round" />
+                    <Line points={pts} stroke="#000000" strokeWidth={8} opacity={0.35} tension={0.4} lineCap="round" />
+                    <Line points={pts} stroke={style.color} strokeWidth={6} tension={0.4} lineCap="round" />
                     {wire.wireType === 'E' && (
                       <Line
                         points={pts}
                         stroke="#FACC15"
-                        strokeWidth={3}
+                        strokeWidth={2.5}
                         dash={[10, 10]}
-                        tension={0.45}
+                        tension={0.4}
                         lineCap="round"
                       />
                     )}
@@ -832,7 +969,7 @@ export default function CircuitSimulator() {
                         strokeWidth={3}
                         dash={[6, 34]}
                         dashOffset={-pulseOffset}
-                        tension={0.45}
+                        tension={0.4}
                         lineCap="round"
                       />
                     )}
@@ -840,7 +977,7 @@ export default function CircuitSimulator() {
                 );
               })}
 
-              {/* ================= 5. BRASS SCREW TERMINALS ================= */}
+              {/* ================= 6. BRASS SCREW TERMINALS ================= */}
               {currentLevel.terminals.map((term) => {
                 const isSelected = selectedTerminal?.id === term.id;
                 return (
@@ -856,24 +993,24 @@ export default function CircuitSimulator() {
                       e.target.getStage().container().style.cursor = 'default';
                     }}
                   >
-                    {isSelected && <Circle radius={17} fill="#F59E0B" opacity={0.4} />}
+                    {isSelected && <Circle radius={16} fill="#F59E0B" opacity={0.4} />}
                     <Circle
-                      radius={11}
+                      radius={10}
                       fill={isSelected ? '#FBBF24' : '#EAB308'}
                       stroke="#713F12"
-                      strokeWidth={2.5}
+                      strokeWidth={2}
                     />
-                    <Line points={[-5, 0, 5, 0]} stroke="#713F12" strokeWidth={2} />
-                    <Line points={[0, -5, 0, 5]} stroke="#713F12" strokeWidth={2} />
-                    <Rect x={-26} y={-30} width={52} height={16} fill="#0F294A" cornerRadius={4} />
+                    <Line points={[-4, 0, 4, 0]} stroke="#713F12" strokeWidth={2} />
+                    <Line points={[0, -4, 0, 4]} stroke="#713F12" strokeWidth={2} />
+                    <Rect x={-28} y={-28} width={56} height={15} fill="#0F294A" cornerRadius={4} />
                     <Text
                       text={term.label}
-                      x={-26}
-                      y={-27}
-                      width={52}
+                      x={-28}
+                      y={-25}
+                      width={56}
                       align="center"
                       fill="#FFFFFF"
-                      fontSize={9}
+                      fontSize={8.5}
                       fontStyle="bold"
                     />
                   </Group>
