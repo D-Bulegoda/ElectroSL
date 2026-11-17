@@ -13,8 +13,8 @@ const TASK_BANK = [
     id: 'TASK_LIGHT_SINGLE',
     titleEn: 'Task 1: Single-Way Lighting & Earth Bonding',
     titleSinhala: 'කාර්යය 1: ආලෝකකරණ පරිපථය සහ පෘථිවි සම්බන්ධතාව',
-    descEn: 'Connect Live through MCB and Switch to Bulb L. Connect Neutral and Earth securely.',
-    descSinhala: 'MCB සහ ස්විචය හරහා බල්බ් L වෙත ජීවී කම්බිය සම්බන්ධ කරන්න. උදාසීන සහ පෘථිවි කම්බි නිවැරදිව සවි කරන්න.',
+    descEn: 'Connect Live through MCB and Wall Switch (COM → L1) to Bulb L. Connect Neutral and Earth securely.',
+    descSinhala: 'MCB සහ බිත්ති ස්විචය (COM → L1) හරහා බල්බ් L වෙත ජීවී කම්බිය සම්බන්ධ කරන්න. උදාසීන සහ පෘථිවි කම්බි නිවැරදිව සවි කරන්න.',
     level: 1,
     requiredWires: [
       { from: 'MAIN_L', to: 'SW_COM', type: 'L' },
@@ -25,14 +25,13 @@ const TASK_BANK = [
   },
   {
     id: 'TASK_SOCKET_13A',
-    titleEn: 'Task 2: 13A Socket Outlet Polarity Wiring',
-    titleSinhala: 'කාර්යය 2: 13A සොකට් අලෙවිසැල් රැහැන්ගත කිරීම',
-    descEn: 'Wire the 13A Socket with correct IEC polarity: Live Right, Neutral Left, Earth Top.',
-    descSinhala: 'නිවැරදි IEC ප්‍රමිතියට අනුව 13A සොකට් එකට කම්බි සම්බන්ධ කරන්න: දකුණට ජීවී, වමට උදාසීන, ඉහළට පෘථිවි.',
+    titleEn: 'Task 2: 13A Switched Socket Outlet Polarity Wiring',
+    titleSinhala: 'කාර්යය 2: 13A ස්විච් සොකට් අලෙවිසැල් රැහැන්ගත කිරීම',
+    descEn: 'Wire directly from MCB to the 13A Switched Socket: Live to L (Right), Neutral to N (Left), Earth to E (Top).',
+    descSinhala: 'MCB සිට 13A සොකට් එකට කෙලින්ම කම්බි සම්බන්ධ කරන්න: දකුණට ජීවී (L), වමට උදාසීන (N), ඉහළට පෘථිවි (E).',
     level: 2,
     requiredWires: [
-      { from: 'MAIN_L', to: 'SW_COM', type: 'L' },
-      { from: 'SW_L1', to: 'SOCK_L', type: 'L' },
+      { from: 'MAIN_L', to: 'SOCK_L', type: 'L' },
       { from: 'MAIN_N', to: 'SOCK_N', type: 'N' },
       { from: 'MAIN_E', to: 'SOCK_E', type: 'E' },
     ],
@@ -72,7 +71,7 @@ const TASK_BANK = [
 
 const LEVELS = {
   1: {
-    title: 'Level 1: Domestic Switch & Earthing',
+    title: 'Level 1: Domestic Wall Switch & Lighting',
     terminals: [
       { id: 'MAIN_L', label: 'L IN', x: 145, y: 145, type: 'L' },
       { id: 'MAIN_N', label: 'N BAR', x: 145, y: 235, type: 'N' },
@@ -85,16 +84,15 @@ const LEVELS = {
     ],
   },
   2: {
-    title: 'Level 2: 13A Socket Outlet Ring/Radial',
+    title: 'Level 2: Sri Lankan 13A Switched Socket Outlet',
     terminals: [
       { id: 'MAIN_L', label: 'L IN', x: 145, y: 145, type: 'L' },
       { id: 'MAIN_N', label: 'N BAR', x: 145, y: 235, type: 'N' },
       { id: 'MAIN_E', label: 'E BAR', x: 145, y: 325, type: 'E' },
-      { id: 'SW_COM', label: 'IN', x: 430, y: 155, type: 'L' },
-      { id: 'SW_L1', label: 'OUT', x: 520, y: 155, type: 'L' },
-      { id: 'SOCK_E', label: 'E (TOP)', x: 810, y: 150, type: 'E' },
-      { id: 'SOCK_N', label: 'N (LEFT)', x: 765, y: 245, type: 'N' },
-      { id: 'SOCK_L', label: 'L (RIGHT)', x: 855, y: 245, type: 'L' },
+      // Direct terminals on the 13A Switched Socket (No separate wall switch)
+      { id: 'SOCK_E', label: 'E (TOP)', x: 650, y: 145, type: 'E' },
+      { id: 'SOCK_N', label: 'N (LEFT)', x: 590, y: 245, type: 'N' },
+      { id: 'SOCK_L', label: 'L (RIGHT)', x: 710, y: 245, type: 'L' },
     ],
   },
   3: {
@@ -103,15 +101,12 @@ const LEVELS = {
       { id: 'MAIN_L', label: 'L IN', x: 145, y: 145, type: 'L' },
       { id: 'MAIN_N', label: 'N BAR', x: 145, y: 235, type: 'N' },
       { id: 'MAIN_E', label: 'E BAR', x: 145, y: 325, type: 'E' },
-      // Switch 1 (Bottom of stairs)
       { id: 'SW1_COM', label: 'S1 COM', x: 310, y: 155, type: 'L' },
       { id: 'SW1_L1', label: 'S1 L1', x: 375, y: 130, type: 'L' },
       { id: 'SW1_L2', label: 'S1 L2', x: 375, y: 185, type: 'L' },
-      // Switch 2 (Top of stairs)
       { id: 'SW2_L1', label: 'S2 L1', x: 515, y: 130, type: 'L' },
       { id: 'SW2_L2', label: 'S2 L2', x: 515, y: 185, type: 'L' },
       { id: 'SW2_COM', label: 'S2 COM', x: 580, y: 155, type: 'L' },
-      // Ceiling Bulb
       { id: 'BULB_L', label: 'L', x: 765, y: 145, type: 'L' },
       { id: 'BULB_N', label: 'N', x: 765, y: 235, type: 'N' },
       { id: 'BULB_E', label: 'EARTH', x: 765, y: 325, type: 'E' },
@@ -123,12 +118,10 @@ const LEVELS = {
       { id: 'MAIN_L', label: 'L IN', x: 145, y: 145, type: 'L' },
       { id: 'MAIN_N', label: 'N BAR', x: 145, y: 235, type: 'N' },
       { id: 'MAIN_E', label: 'E BAR', x: 145, y: 325, type: 'E' },
-      // DP Switch Inputs & Outputs
       { id: 'DP_L_IN', label: 'L IN', x: 420, y: 145, type: 'L' },
       { id: 'DP_N_IN', label: 'N IN', x: 420, y: 235, type: 'N' },
       { id: 'DP_L_OUT', label: 'L OUT', x: 530, y: 145, type: 'L' },
       { id: 'DP_N_OUT', label: 'N OUT', x: 530, y: 235, type: 'N' },
-      // Heavy AC Unit Terminals
       { id: 'AC_L', label: 'AC L', x: 765, y: 145, type: 'L' },
       { id: 'AC_N', label: 'AC N', x: 765, y: 235, type: 'N' },
       { id: 'AC_E', label: 'AC E', x: 765, y: 325, type: 'E' },
@@ -141,7 +134,6 @@ export default function CircuitSimulator() {
   const [isVerifiedProfile, setIsVerifiedProfile] = useState(false);
   const [checkingVerification, setCheckingVerification] = useState(true);
 
-  // Multi-task random progression states
   const [taskQueue, setTaskQueue] = useState([]);
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [taskResults, setTaskResults] = useState([]);
@@ -165,7 +157,6 @@ export default function CircuitSimulator() {
   const [pulseOffset, setPulseOffset] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Check profile & certificate verification status + initialize randomized task queue
   useEffect(() => {
     async function checkVerificationStatus() {
       try {
@@ -185,7 +176,6 @@ export default function CircuitSimulator() {
       }
     }
 
-    // Shuffle TASK_BANK randomly so every electrician receives a unique 3-task assessment
     const shuffled = [...TASK_BANK].sort(() => Math.random() - 0.5).slice(0, 3);
     setTaskQueue(shuffled);
     setAssignedTask(shuffled[0]);
@@ -200,7 +190,6 @@ export default function CircuitSimulator() {
 
   const currentLevel = LEVELS[level];
 
-  // Animate electricity flow pulses
   useEffect(() => {
     if (!isPowered) return;
     const interval = setInterval(() => {
@@ -276,12 +265,12 @@ export default function CircuitSimulator() {
       return;
     }
 
-    // Short circuit check across main busbars and outputs
     if (
       findWire('MAIN_L', 'MAIN_N') ||
       findWire('MAIN_L', 'MAIN_E') ||
       findWire('SW_L1', 'MAIN_N') ||
-      findWire('DP_L_OUT', 'DP_N_OUT')
+      findWire('DP_L_OUT', 'DP_N_OUT') ||
+      findWire('SOCK_L', 'SOCK_N')
     ) {
       setIsBreakerOn(false);
       setIsPowered(false);
@@ -302,11 +291,10 @@ export default function CircuitSimulator() {
 
     if (!switchState) {
       setIsPowered(false);
-      setStatus({ type: 'info', text: 'MCB is ON, Load Switch is OFF. Toggle switch ON.' });
+      setStatus({ type: 'info', text: 'MCB is ON, Switch is OFF. Click the switch ON to test.' });
       return;
     }
 
-    // Evaluate connections & IEC color codes against assigned task criteria
     let matchedWiresCount = 0;
     let colorErrors = 0;
 
@@ -321,16 +309,20 @@ export default function CircuitSimulator() {
       }
     });
 
+    // Penalize extra unintended jumper wires
+    const extraWires = Math.max(0, wires.length - assignedTask.requiredWires.length);
     let calculatedScore = (matchedWiresCount / assignedTask.requiredWires.length) * 80;
     if (colorErrors === 0 && matchedWiresCount > 0) calculatedScore += 20;
+    calculatedScore = Math.max(0, calculatedScore - extraWires * 15);
 
     const roundedScore = Math.round(calculatedScore);
-    setIsPowered(matchedWiresCount === assignedTask.requiredWires.length);
+    setIsPowered(matchedWiresCount === assignedTask.requiredWires.length && extraWires === 0);
     setScore(roundedScore);
     setEvaluationBreakdown({
       matched: matchedWiresCount,
       total: assignedTask.requiredWires.length,
       colorErrors,
+      extraWires,
       passed: roundedScore >= 75,
     });
 
@@ -338,8 +330,8 @@ export default function CircuitSimulator() {
       type: roundedScore >= 75 ? 'success' : 'danger',
       text:
         roundedScore >= 75
-          ? `✅ TASK VERIFIED! Score: ${roundedScore}/100. Click "Next Task" to continue.`
-          : `❌ INCOMPLETE / ERRORS! Score: ${roundedScore}/100. Check connections & color codes, or proceed to next task.`,
+          ? `✅ TASK VERIFIED! Score: ${roundedScore}/100. Click "Next Task ➔" to continue.`
+          : `❌ INCOMPLETE / EXTRA WIRES! Score: ${roundedScore}/100. Fix wiring or click "Next Task ➔".`,
     });
   };
 
@@ -358,13 +350,14 @@ export default function CircuitSimulator() {
   };
 
   const handleNextTask = () => {
+    const finalTaskScore = score !== null ? score : 0;
     const updatedResults = [
       ...taskResults,
       {
         taskId: assignedTask.id,
         titleEn: assignedTask.titleEn,
-        score: score ?? 0,
-        passed: (score ?? 0) >= 75,
+        score: finalTaskScore,
+        passed: finalTaskScore >= 75,
       },
     ];
     setTaskResults(updatedResults);
@@ -378,6 +371,7 @@ export default function CircuitSimulator() {
       setWires([]);
       setSelectedTerminal(null);
       setIsBreakerOn(false);
+      setIsSwitchOn(true);
       setIsPowered(false);
       setIsShortCircuit(false);
       setScore(null);
@@ -418,7 +412,6 @@ export default function CircuitSimulator() {
     }
   };
 
-  // Grid dots
   const gridDots = [];
   for (let gx = 30; gx < 960; gx += 30) {
     for (let gy = 30; gy < 430; gy += 30) {
@@ -426,7 +419,6 @@ export default function CircuitSimulator() {
     }
   }
 
-  // Guard Clause: Certificate & Profile Lock
   if (checkingVerification) {
     return (
       <div className="sim-page">
@@ -451,7 +443,6 @@ export default function CircuitSimulator() {
     );
   }
 
-  // Final Scorecard Screen after completing all randomized tasks
   if (isAssessmentFinished) {
     const averageScore = Math.round(
       taskResults.reduce((sum, item) => sum + item.score, 0) / taskResults.length
@@ -551,11 +542,21 @@ export default function CircuitSimulator() {
             <button className="btn-test" onClick={handleToggleBreaker}>
               {isBreakerOn ? '🔴 Trip MCB OFF' : '⚡ Flip MCB ON'}
             </button>
-            {score !== null && (
-              <button className="btn-submit-score" onClick={handleNextTask}>
-                {currentTaskIndex + 1 < taskQueue.length ? 'Next Task ➔' : '✓ Finish & View Results'}
-              </button>
-            )}
+            {/* Always visible Next Task button so user can advance or skip anytime */}
+            <button
+              className="btn-submit-score"
+              style={{
+                backgroundColor: score !== null ? '#16A34A' : '#2563EB',
+                color: '#FFFFFF',
+                fontWeight: 'bold',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+              }}
+              onClick={handleNextTask}
+            >
+              {currentTaskIndex + 1 < taskQueue.length ? 'Next Task ➔' : '✓ Finish & View Results'}
+            </button>
           </div>
         </div>
 
@@ -626,8 +627,27 @@ export default function CircuitSimulator() {
                 )}
               </Group>
 
-              {/* ================= 2. MIDDLE SWITCH HARDWARE ================= */}
-              {level === 3 ? (
+              {/* ================= 2. MIDDLE SWITCH HARDWARE (Levels 1, 3, 4 ONLY) ================= */}
+              {level === 1 && (
+                /* Standard Single Wall Switch for Ceiling Light */
+                <Group x={385} y={85}>
+                  <Rect width={180} height={180} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
+                  <Text text="WALL SWITCH" x={42} y={16} fill="#475569" fontSize={12} fontStyle="bold" />
+                  <Group x={55} y={96} onClick={handleToggleWallSwitch}>
+                    <Rect
+                      width={70}
+                      height={64}
+                      fill={isSwitchOn ? '#E2E8F0' : '#CBD5E1'}
+                      stroke="#94A3B8"
+                      strokeWidth={2}
+                      cornerRadius={8}
+                    />
+                    <Text text={isSwitchOn ? 'ON' : 'OFF'} x={22} y={28} fill="#0F294A" fontSize={13} fontStyle="bold" />
+                  </Group>
+                </Group>
+              )}
+
+              {level === 3 && (
                 <>
                   {/* Switch 1 (Bottom of Stairs) */}
                   <Group x={275} y={95}>
@@ -654,7 +674,9 @@ export default function CircuitSimulator() {
                     <Text text="2-WAY" x={12} y={20} fill="#0F294A" fontSize={11} fontStyle="bold" />
                   </Group>
                 </>
-              ) : level === 4 ? (
+              )}
+
+              {level === 4 && (
                 /* 32A Double-Pole Isolator Switch */
                 <Group x={385} y={85}>
                   <Rect width={180} height={200} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
@@ -676,23 +698,6 @@ export default function CircuitSimulator() {
                       fontSize={12}
                       fontStyle="bold"
                     />
-                  </Group>
-                </Group>
-              ) : (
-                /* Standard Single Wall Switch (Levels 1 & 2) */
-                <Group x={385} y={85}>
-                  <Rect width={180} height={180} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
-                  <Text text="WALL SWITCH" x={42} y={16} fill="#475569" fontSize={12} fontStyle="bold" />
-                  <Group x={55} y={96} onClick={handleToggleWallSwitch}>
-                    <Rect
-                      width={70}
-                      height={64}
-                      fill={isSwitchOn ? '#E2E8F0' : '#CBD5E1'}
-                      stroke="#94A3B8"
-                      strokeWidth={2}
-                      cornerRadius={8}
-                    />
-                    <Text text={isSwitchOn ? 'ON' : 'OFF'} x={22} y={28} fill="#0F294A" fontSize={13} fontStyle="bold" />
                   </Group>
                 </Group>
               )}
@@ -735,18 +740,36 @@ export default function CircuitSimulator() {
               )}
 
               {level === 2 && (
-                /* 13A Socket */
-                <Group x={705} y={85}>
-                  <Rect width={210} height={230} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={14} />
-                  <Text text="13A SOCKET" x={60} y={16} fill="#0F294A" fontSize={12} fontStyle="bold" />
-                  <Rect x={99} y={85} width={12} height={24} fill="#1E293B" cornerRadius={2} />
-                  <Rect x={55} y={132} width={22} height={12} fill="#1E293B" cornerRadius={2} />
-                  <Rect x={133} y={132} width={22} height={12} fill="#1E293B" cornerRadius={2} />
-                  <Circle x={105} y={192} radius={8} fill={isPowered ? '#22C55E' : '#CBD5E1'} />
+                /* Sri Lankan BS 1363 13A Switched Socket Outlet (Built-in Rocker Switch on Faceplate) */
+                <Group x={520} y={70}>
+                  <Rect width={280} height={260} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={3} cornerRadius={16} />
+                  <Text text="13A SWITCHED SOCKET (SL)" x={48} y={16} fill="#0F294A" fontSize={12} fontStyle="bold" />
+
+                  {/* Built-in Rocker Switch directly on Socket Outlet */}
+                  <Group x={200} y={48} onClick={handleToggleWallSwitch}>
+                    <Rect
+                      width={48}
+                      height={54}
+                      fill={isSwitchOn ? '#E2E8F0' : '#CBD5E1'}
+                      stroke="#94A3B8"
+                      strokeWidth={2}
+                      cornerRadius={6}
+                    />
+                    <Rect x={16} y={6} width={16} height={5} fill={isSwitchOn ? '#EF4444' : '#94A3B8'} cornerRadius={2} />
+                    <Text text={isSwitchOn ? 'ON' : 'OFF'} x={12} y={24} fill="#0F294A" fontSize={11} fontStyle="bold" />
+                  </Group>
+
+                  {/* 3-Pin BS 1363 Rectangular Slots */}
+                  <Rect x={124} y={102} width={12} height={24} fill="#1E293B" cornerRadius={2} />
+                  <Rect x={78} y={155} width={24} height={12} fill="#1E293B" cornerRadius={2} />
+                  <Rect x={158} y={155} width={24} height={12} fill="#1E293B" cornerRadius={2} />
+
+                  {/* Power Status Indicator */}
+                  <Circle x={130} y={212} radius={8} fill={isPowered ? '#22C55E' : '#CBD5E1'} />
                   <Text
-                    text={isPowered ? '230V LIVE READY' : 'NO POWER'}
-                    x={isPowered ? 58 : 72}
-                    y={206}
+                    text={isPowered ? '230V SOCKET LIVE' : 'SOCKET OFF / UNPOWERED'}
+                    x={isPowered ? 74 : 52}
+                    y={228}
                     fill={isPowered ? '#15803D' : '#64748B'}
                     fontSize={11}
                     fontStyle="bold"
@@ -842,12 +865,12 @@ export default function CircuitSimulator() {
                     />
                     <Line points={[-5, 0, 5, 0]} stroke="#713F12" strokeWidth={2} />
                     <Line points={[0, -5, 0, 5]} stroke="#713F12" strokeWidth={2} />
-                    <Rect x={-24} y={-30} width={48} height={16} fill="#0F294A" cornerRadius={4} />
+                    <Rect x={-26} y={-30} width={52} height={16} fill="#0F294A" cornerRadius={4} />
                     <Text
                       text={term.label}
-                      x={-24}
+                      x={-26}
                       y={-27}
-                      width={48}
+                      width={52}
                       align="center"
                       fill="#FFFFFF"
                       fontSize={9}
@@ -873,6 +896,11 @@ export default function CircuitSimulator() {
             <p>
               IEC Color Compliance Errors: <strong>{evaluationBreakdown.colorErrors}</strong>
             </p>
+            {evaluationBreakdown.extraWires > 0 && (
+              <p className="text-red-400">
+                Extra/Unintended Wires: <strong>{evaluationBreakdown.extraWires}</strong> (Click any wire on canvas to remove)
+              </p>
+            )}
             <p>
               Status:{' '}
               <strong>{evaluationBreakdown.passed ? 'PASSED' : 'NEEDS IMPROVEMENT'}</strong>
