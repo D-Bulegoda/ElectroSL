@@ -7,6 +7,8 @@ using ElectroSL_Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography;
+using ElectroSL_Backend.Models;
 
 namespace ElectroSL_Backend.Services.Implementations;
 
@@ -99,4 +101,71 @@ public class AuthService : IAuthService
 
         return true;
     }
+
+
+
+public async Task<(int UserId, string OtpCode)> RegisterAsync(
+    string name,
+    string email,
+    string password,
+    string phone,
+    string role)
+{
+    if (string.IsNullOrWhiteSpace(name) ||
+        string.IsNullOrWhiteSpace(email) ||
+        string.IsNullOrWhiteSpace(password) ||
+        string.IsNullOrWhiteSpace(phone) ||
+        string.IsNullOrWhiteSpace(role))
+    {
+        throw new ArgumentException("All registration fields are required.");
+    }
+
+    name = name.Trim();
+    email = email.Trim().ToLowerInvariant();
+    phone = phone.Trim();
+    role = role.Trim();
+
+    if (password.Length < 8)
+        throw new ArgumentException("Password must contain at least 8 characters.");
+
+    if (role != "Customer" && role != "Electrician")
+        throw new ArgumentException("Invalid registration role.");
+
+    var existingUser = await _context.Users
+        .AnyAsync(u => u.Email.ToLower() == email);
+
+    if (existingUser)
+        throw new InvalidOperationException("Email is already registered.");
+
+    var user = new User
+    {
+        Name = name,
+        Email = email,
+        Phone = phone,
+        Role = role,
+        IsPhoneVerified = false,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    user.PasswordHash = _passwordHasher.HashPassword(
+        user.Email,
+        password
+    );
+
+    var otpCode = RandomNumberGenerator.GetInt32(1000, 10000).ToString();
+
+    user.OtpCodeHash = _passwordHasher.HashPassword(
+        user.Email,
+        otpCode
+    );
+
+    user.OtpExpiryUtc = DateTime.UtcNow.AddMinutes(5);
+
+    _context.Users.Add(user);
+    await _context.SaveChangesAsync();
+
+    return (user.UserId, otpCode);
+}
+
+
 }
