@@ -272,6 +272,9 @@ namespace ElectroSL_Backend.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("TransactionId"));
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<decimal>("ElectricianEarning")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -287,9 +290,6 @@ namespace ElectroSL_Backend.Migrations
                     b.Property<decimal>("PlatformCommission")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("ProcessedAt")
-                        .HasColumnType("datetime(6)");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
@@ -346,6 +346,9 @@ namespace ElectroSL_Backend.Migrations
                     b.Property<DateTime>("AttemptDate")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int>("CorrectConnections")
+                        .HasColumnType("int");
+
                     b.Property<int>("ElectricianId")
                         .HasColumnType("int");
 
@@ -354,6 +357,14 @@ namespace ElectroSL_Backend.Migrations
 
                     b.Property<int>("SafetyMistakesCount")
                         .HasColumnType("int");
+
+                    b.Property<string>("TaskConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("TaskIds")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<int>("TimeTakenSeconds")
                         .HasColumnType("int");
