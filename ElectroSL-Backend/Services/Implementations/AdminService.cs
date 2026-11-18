@@ -63,7 +63,7 @@ public class AdminService : IAdminService
         if (user == null) return null;
 
         var simResult = await _context.SimulatorResults
-            .OrderByDescending(s => s.AttemptDate)
+            .OrderByDescending(s => s.CompletedAtUtc)
             .FirstOrDefaultAsync(s => s.ElectricianId == profile.UserId);
 
         return new ApplicationDetailDto
@@ -79,10 +79,11 @@ public class AdminService : IAdminService
             CreatedAt = user.CreatedAt,
 
             SimulatorPassed = simResult?.IsPassed ?? false,
-            SimulatorScore = simResult?.TotalScore ?? 0,
+            // Cast to int if your DTO expects an integer, since Score is a decimal in the DB
+            SimulatorScore = simResult != null ? (int)simResult.Score : 0, 
             SimulatorTimeTaken = simResult?.TimeTakenSeconds ?? 0,
             SafetyMistakesCount = simResult?.SafetyMistakesCount ?? 0,
-            SimulatorDate = simResult?.AttemptDate,
+            SimulatorDate = simResult?.CompletedAtUtc,
 
             RejectionReason = profile.RejectionReason,
             ReviewedByAdminId = profile.ReviewedByAdminId,
@@ -99,7 +100,7 @@ public class AdminService : IAdminService
 
         // Check verification prerequisites: NVQ and NIC uploaded, simulator passed
         var simResult = await _context.SimulatorResults
-            .OrderByDescending(s => s.AttemptDate)
+            .OrderByDescending(s => s.CompletedAtUtc)
             .FirstOrDefaultAsync(s => s.ElectricianId == profile.UserId);
 
         bool hasNvq = !string.IsNullOrWhiteSpace(profile.NvqCertificateUrl);
@@ -256,4 +257,3 @@ public class AdminService : IAdminService
         };
     }
 }
-

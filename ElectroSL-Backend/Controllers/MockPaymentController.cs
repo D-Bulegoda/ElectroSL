@@ -6,9 +6,9 @@ using ElectroSL_Backend.Data;
 [ApiController]
 public class MockPaymentController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ElectroSLDbContext _context;
 
-    public MockPaymentController(ApplicationDbContext context)
+    public MockPaymentController(ElectroSLDbContext context)
     {
         _context = context;
     }

@@ -1,6 +1,7 @@
 using ElectroSL_Backend.Models;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace ElectroSL_Backend.Data;
 
 public class ElectroSLDbContext : DbContext
