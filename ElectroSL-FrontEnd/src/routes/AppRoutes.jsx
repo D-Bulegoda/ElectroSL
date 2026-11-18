@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
@@ -40,6 +39,10 @@ import ApplicationDetail from '../pages/Admin/ApplicationDetail';
 import ApprovedElectricians from '../pages/Admin/ApprovedElectricians';
 import RejectedApplications from '../pages/Admin/RejectedApplications';
 import EquipmentPriceCatalog from '../pages/Admin/EquipmentPriceCatalog';
+
+// Payment & Notification Components
+import MockPaymentGateway from '../components/payments/MockPaymentGateway';
+import NotificationBell from '../components/NotificationBell';
 
 function AppRoutes() {
   return (
@@ -87,6 +90,20 @@ function AppRoutes() {
         <Route path="/electrician/portfolio" element={<DigitalPortfolio />} />
         <Route path="/electrician/wallet" element={<WalletAndEarnings />} />
         <Route path="/electrician/simulator" element={<CircuitSimulator />} />
+
+        {/* Mock Payment & SignalR Notification Test Route */}
+        <Route
+          path="/payment-test"
+          element={
+            <div style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2>Payment & Notification Test</h2>
+                <NotificationBell userId={1} />
+              </div>
+              <MockPaymentGateway jobId={1} defaultAmount={5000} />
+            </div>
+          }
+        />
 
         {/* Unknown routes */}
         <Route path="*" element={<h2>Page not found</h2>} />

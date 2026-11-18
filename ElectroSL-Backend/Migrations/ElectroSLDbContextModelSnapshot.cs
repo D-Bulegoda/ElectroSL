@@ -264,6 +264,47 @@ namespace ElectroSL_Backend.Migrations
                     b.ToTable("JobUsedEquipments");
                 });
 
+            modelBuilder.Entity("ElectroSL_Backend.Models.Notification", b =>
+                {
+                    b.Property<int>("NotificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("NotificationId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("RelatedJobId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("NotificationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notifications");
+                });
+
             modelBuilder.Entity("ElectroSL_Backend.Models.PaymentTransaction", b =>
                 {
                     b.Property<int>("TransactionId")
@@ -271,6 +312,9 @@ namespace ElectroSL_Backend.Migrations
                         .HasColumnType("int");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("TransactionId"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<decimal>("ElectricianEarning")
                         .HasPrecision(18, 2)
@@ -287,9 +331,6 @@ namespace ElectroSL_Backend.Migrations
                     b.Property<decimal>("PlatformCommission")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("ProcessedAt")
-                        .HasColumnType("datetime(6)");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
@@ -485,6 +526,17 @@ namespace ElectroSL_Backend.Migrations
                     b.Navigation("EquipmentCatalog");
 
                     b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.Notification", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ElectroSL_Backend.Models.PaymentTransaction", b =>
