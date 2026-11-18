@@ -2,6 +2,8 @@ using ElectroSL_Backend.Data;
 using ElectroSL_Backend.Services.Implementations;
 using ElectroSL_Backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using ElectroSL_Backend.Hubs;
+using ElectroSL_Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +17,7 @@ builder.Services.AddDbContext<ElectroSLDbContext>(options =>
         mySqlOptions => mySqlOptions.CommandTimeout(120)
     ));
 
+// Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IJobService, JobService>();
@@ -22,7 +25,10 @@ builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<IMediaStorageService, LocalMediaStorageService>();
 builder.Services.AddScoped<DistanceCalculationService>();
 builder.Services.AddScoped<WalletService>();
+builder.Services.AddScoped<INotificationService, NotificationService>(); // Added NotificationService
 
+// Add SignalR
+builder.Services.AddSignalR(); // Added SignalR
 
 builder.Services.AddCors(options =>
 {
@@ -30,7 +36,7 @@ builder.Services.AddCors(options =>
         policy => policy.WithOrigins("http://localhost:5173")
                         .AllowAnyMethod()
                         .AllowAnyHeader()
-                        .AllowCredentials());
+                        .AllowCredentials()); // AllowCredentials is required for SignalR
 });
 
 var app = builder.Build();
@@ -45,4 +51,8 @@ app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<NotificationHub>("/hubs/notifications"); // Added Hub Mapping
+
 app.Run();
