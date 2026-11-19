@@ -1,9 +1,13 @@
+using System;
+using System.Text;
 using ElectroSL_Backend.Data;
-using ElectroSL_Backend.Services.Implementations;
-using ElectroSL_Backend.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using ElectroSL_Backend.Hubs;
 using ElectroSL_Backend.Services;
+using ElectroSL_Backend.Services.Implementations;
+using ElectroSL_Backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +34,27 @@ builder.Services.AddScoped<INotificationService, NotificationService>(); // Adde
 // Add SignalR
 builder.Services.AddSignalR(); // Added SignalR
 
+// JWT Authentication
+var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? "ElectroSL_Super_Secret_Key_Change_This_In_Production";
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
@@ -48,11 +73,18 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
-app.UseHttpsRedirection();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Map SignalR Hub
-app.MapHub<NotificationHub>("/hubs/notifications"); // Added Hub Mapping
+// Map SignalR Hubs
+app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHub<JobTrackingHub>("/hubs/jobtracking");
 
-app.Run();
+app.Run();
