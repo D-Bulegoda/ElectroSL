@@ -387,6 +387,9 @@ namespace ElectroSL_Backend.Migrations
                     b.Property<DateTime>("AttemptDate")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int>("CorrectConnections")
+                        .HasColumnType("int");
+
                     b.Property<int>("ElectricianId")
                         .HasColumnType("int");
 
@@ -395,6 +398,14 @@ namespace ElectroSL_Backend.Migrations
 
                     b.Property<int>("SafetyMistakesCount")
                         .HasColumnType("int");
+
+                    b.Property<string>("TaskConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("TaskIds")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<int>("TimeTakenSeconds")
                         .HasColumnType("int");
