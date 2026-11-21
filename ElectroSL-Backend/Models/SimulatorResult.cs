@@ -11,6 +11,9 @@ public class SimulatorResult
     public int TotalScore { get; set; }
     public int TimeTakenSeconds { get; set; }
     public int SafetyMistakesCount { get; set; }
+    public int CorrectConnections { get; set; }
+    public string TaskConfigurationJson { get; set; } = string.Empty;
+    public string TaskIds { get; set; } = string.Empty;
     public bool IsPassed { get; set; }
     public DateTime AttemptDate { get; set; } = DateTime.UtcNow;
 

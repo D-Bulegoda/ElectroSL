@@ -26,5 +26,7 @@ namespace ElectroSL_Backend.Models
 
         [ForeignKey("JobId")]
         public virtual Job Job { get; set; } = null!;
+
+        public virtual ICollection<WalletTransaction> WalletTransactions { get; set; } = new List<WalletTransaction>();
     }
 }

@@ -55,6 +55,23 @@ export const adminService = {
     return fetchWithAuth('/admin/dashboard-stats', { method: 'GET' });
   },
 
+  getDashboardAnalytics: async (range = '30d', customFrom = null, customTo = null) => {
+    const params = new URLSearchParams();
+    if (range) params.append('range', range);
+    if (customFrom) params.append('customFrom', customFrom);
+    if (customTo) params.append('customTo', customTo);
+    return fetchWithAuth(`/admin/dashboard-analytics?${params.toString()}`, { method: 'GET' });
+  },
+
+  // Advanced Analytics & Business Intelligence (Task 4.2)
+  getAdvancedAnalytics: async (range = '30d', customFrom = null, customTo = null) => {
+    const params = new URLSearchParams();
+    if (range) params.append('range', range);
+    if (customFrom) params.append('customFrom', customFrom);
+    if (customTo) params.append('customTo', customTo);
+    return fetchWithAuth(`/admin/advanced-analytics?${params.toString()}`, { method: 'GET' });
+  },
+
   // Equipment Price Catalog
   getCatalogItems: async (category = '', search = '', isActive = null) => {
     const params = new URLSearchParams();
@@ -228,6 +245,81 @@ export const adminService = {
       method: 'PUT',
       body: JSON.stringify({ resolutionNotes, concurrencyVersion })
     });
+  },
+
+  // Financial & Wallet Operations Management (Phase 3 Task 3.4.5 & Task 3.4.7)
+  getFinancialSummary: async () => {
+    return fetchWithAuth('/admin/financial/summary', { method: 'GET' });
+  },
+
+  getFinancialTransactions: async ({ page = 1, pageSize = 20, electricianProfileId = null, transactionType = '', startDateUtc = '', endDateUtc = '', searchQuery = '' } = {}) => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', page);
+    if (pageSize) params.append('pageSize', pageSize);
+    if (electricianProfileId) params.append('electricianProfileId', electricianProfileId);
+    if (transactionType) params.append('transactionType', transactionType);
+    if (startDateUtc) params.append('startDateUtc', startDateUtc);
+    if (endDateUtc) params.append('endDateUtc', endDateUtc);
+    if (searchQuery) params.append('searchQuery', searchQuery);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return fetchWithAuth(`/admin/financial/transactions${qs}`, { method: 'GET' });
+  },
+
+  getTechnicianWallet: async (profileId) => {
+    return fetchWithAuth(`/admin/financial/technicians/${profileId}/wallet`, { method: 'GET' });
+  },
+
+  recordPayout: async (payoutData) => {
+    return fetchWithAuth('/admin/financial/payouts', {
+      method: 'POST',
+      body: JSON.stringify(payoutData)
+    });
+  },
+
+  reversePayout: async (payoutId, reversalData) => {
+    return fetchWithAuth(`/admin/financial/payouts/${payoutId}/reverse`, {
+      method: 'POST',
+      body: JSON.stringify(reversalData)
+    });
+  },
+
+  adjustWallet: async (profileId, adjustmentData) => {
+    return fetchWithAuth(`/admin/financial/technicians/${profileId}/adjust`, {
+      method: 'POST',
+      body: JSON.stringify(adjustmentData)
+    });
+  },
+
+  // Unified Administrative Audit Logging (Task 3.5)
+  getAdminAuditLogs: async ({ page = 1, pageSize = 20, search = '', actionType = '', entityType = '', adminUserId = null, startDateUtc = '', endDateUtc = '' } = {}) => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', page);
+    if (pageSize) params.append('pageSize', pageSize);
+    if (search) params.append('search', search);
+    if (actionType) params.append('actionType', actionType);
+    if (entityType) params.append('entityType', entityType);
+    if (adminUserId) params.append('adminUserId', adminUserId);
+    if (startDateUtc) params.append('startDateUtc', startDateUtc);
+    if (endDateUtc) params.append('endDateUtc', endDateUtc);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return fetchWithAuth(`/admin/audit-logs${qs}`, { method: 'GET' });
+  },
+
+  getAdminAuditLogDetail: async (auditLogId) => {
+    return fetchWithAuth(`/admin/audit-logs/${auditLogId}`, { method: 'GET' });
+  },
+
+  // Reporting & Export (Phase 4 Task 4.1)
+  exportReportBlob: async (reportType = 'financial', range = '30d', format = 'xlsx', customFrom = null, customTo = null) => {
+    const params = new URLSearchParams();
+    if (reportType) params.append('reportType', reportType);
+    if (range) params.append('range', range);
+    if (format) params.append('format', format);
+    if (customFrom) params.append('customFrom', customFrom);
+    if (customTo) params.append('customTo', customTo);
+    return fetchBlobWithAuth(`/admin/reports/export?${params.toString()}`);
   }
 };
 

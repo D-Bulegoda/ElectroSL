@@ -1,3 +1,5 @@
+using System;
+using System.Data;
 using ElectroSL_Backend.Data;
 using ElectroSL_Backend.DTOs.Admin;
 using ElectroSL_Backend.Models;
@@ -11,15 +13,18 @@ public class AdminService : IAdminService
     private readonly ElectroSLDbContext _context;
     private readonly IDocumentStorageService _documentStorage;
     private readonly DistanceCalculationService _distanceService;
+    private readonly IAdminAuditService _auditService;
 
     public AdminService(
         ElectroSLDbContext context, 
         IDocumentStorageService documentStorage,
-        DistanceCalculationService distanceService)
+        DistanceCalculationService distanceService,
+        IAdminAuditService auditService)
     {
         _context = context;
         _documentStorage = documentStorage;
         _distanceService = distanceService;
+        _auditService = auditService;
     }
 
     public async Task<List<ApplicationListItemDto>> GetApplicationsByStatusAsync(string status)
@@ -181,6 +186,16 @@ public class AdminService : IAdminService
         };
         _context.TechnicianAuditLogs.Add(auditLog);
 
+        var adminAudit = _auditService.CreateAuditEntry(
+            adminUserId,
+            "TechnicianApproved",
+            "ElectricianProfile",
+            profile.ProfileId.ToString(),
+            $"Approved technician application for Profile #{profile.ProfileId}",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = previousStatus }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = "Approved", IsApprovedByAdmin = true }));
+        _context.AdminAuditLogs.Add(adminAudit);
+
         try
         {
             await _context.SaveChangesAsync();
@@ -244,6 +259,17 @@ public class AdminService : IAdminService
         };
         _context.TechnicianAuditLogs.Add(auditLog);
 
+        var adminAudit = _auditService.CreateAuditEntry(
+            adminUserId,
+            "SimulatorOverrideApproved",
+            "ElectricianProfile",
+            profile.ProfileId.ToString(),
+            $"Approved technician Profile #{profile.ProfileId} via Simulator Override",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = previousStatus }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = "Approved", IsApprovedByAdmin = true }),
+            reason: overrideReason.Trim());
+        _context.AdminAuditLogs.Add(adminAudit);
+
         try
         {
             await _context.SaveChangesAsync();
@@ -297,6 +323,17 @@ public class AdminService : IAdminService
             TimestampUtc = DateTime.UtcNow
         };
         _context.TechnicianAuditLogs.Add(auditLog);
+
+        var adminAudit = _auditService.CreateAuditEntry(
+            adminUserId,
+            "TechnicianRejected",
+            "ElectricianProfile",
+            profile.ProfileId.ToString(),
+            $"Rejected technician application for Profile #{profile.ProfileId}",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = previousStatus }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = "Rejected", IsApprovedByAdmin = false, RejectionReason = reason.Trim() }),
+            reason: reason.Trim());
+        _context.AdminAuditLogs.Add(adminAudit);
 
         try
         {
@@ -352,6 +389,17 @@ public class AdminService : IAdminService
             TimestampUtc = DateTime.UtcNow
         };
         _context.TechnicianAuditLogs.Add(auditLog);
+
+        var adminAudit = _auditService.CreateAuditEntry(
+            adminUserId,
+            "TechnicianRevoked",
+            "ElectricianProfile",
+            profile.ProfileId.ToString(),
+            $"Revoked technician accreditation for Profile #{profile.ProfileId}",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = previousStatus }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = "Revoked", IsApprovedByAdmin = false, IsOnline = false, RevocationReason = reason.Trim() }),
+            reason: reason.Trim());
+        _context.AdminAuditLogs.Add(adminAudit);
 
         try
         {
@@ -440,7 +488,7 @@ public class AdminService : IAdminService
         return MapToCatalogItemDto(item);
     }
 
-    public async Task<CatalogActionResult<CatalogItemDto>> CreateCatalogItemAsync(CreateCatalogItemDto dto)
+    public async Task<CatalogActionResult<CatalogItemDto>> CreateCatalogItemAsync(CreateCatalogItemDto dto, int adminUserId = 1)
     {
         if (string.IsNullOrWhiteSpace(dto.Category))
             return CatalogActionResult<CatalogItemDto>.Invalid("Category is required.");
@@ -480,6 +528,24 @@ public class AdminService : IAdminService
         _context.EquipmentCatalog.Add(item);
         await _context.SaveChangesAsync();
 
+        var adminAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "CatalogItemCreated",
+            entityType: "EquipmentCatalog",
+            entityId: item.ItemId.ToString(),
+            description: $"Created equipment catalog item '{item.ItemName}' ({item.Category})",
+            newValues: System.Text.Json.JsonSerializer.Serialize(new {
+                ItemName = item.ItemName,
+                Category = item.Category,
+                BrandName = item.BrandName,
+                Specification = item.Specification,
+                StandardMarketPrice = item.StandardMarketPrice,
+                PriceVarianceThreshold = item.PriceVarianceThreshold
+            }));
+        _context.AdminAuditLogs.Add(adminAudit);
+
+        await _context.SaveChangesAsync();
+
         return CatalogActionResult<CatalogItemDto>.Ok(MapToCatalogItemDto(item), $"Catalog item '{item.ItemName}' created successfully.");
     }
 
@@ -497,6 +563,11 @@ public class AdminService : IAdminService
             return CatalogActionResult<CatalogItemDto>.Conflict(
                 $"Concurrency conflict: The submitted version ({dto.ConcurrencyVersion?.ToString() ?? "missing"}) does not match current version ({item.ConcurrencyVersion}). This catalog item has been modified by another administrator. Please reload to review the latest data.");
         }
+
+        var previousItemName = item.ItemName;
+        var previousPrice = item.StandardMarketPrice;
+        var previousThreshold = item.PriceVarianceThreshold;
+        var previousIsActive = item.IsActive;
 
         if (!string.IsNullOrWhiteSpace(dto.ItemName))
             item.ItemName = dto.ItemName.Trim();
@@ -529,6 +600,7 @@ public class AdminService : IAdminService
         }
 
         // Price change & historical tracking
+        bool isPriceChange = false;
         if (dto.StandardMarketPrice.HasValue)
         {
             decimal newPrice = dto.StandardMarketPrice.Value;
@@ -540,6 +612,7 @@ public class AdminService : IAdminService
             decimal oldPrice = item.StandardMarketPrice;
             if (newPrice != oldPrice)
             {
+                isPriceChange = true;
                 decimal percentageChange = Math.Round(((newPrice - oldPrice) / oldPrice) * 100m, 2);
                 decimal absChange = Math.Abs(percentageChange);
 
@@ -573,6 +646,29 @@ public class AdminService : IAdminService
         // Increment numeric concurrency version and update timestamp
         item.ConcurrencyVersion++;
         item.LastUpdated = DateTime.UtcNow;
+
+        var updateAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: isPriceChange ? "CatalogPriceChanged" : "CatalogItemUpdated",
+            entityType: "EquipmentCatalog",
+            entityId: itemId.ToString(),
+            description: isPriceChange 
+                ? $"Changed standard market price for catalog item #{itemId} ('{item.ItemName}') from LKR {previousPrice:N2} to LKR {item.StandardMarketPrice:N2}"
+                : $"Updated equipment catalog item #{itemId} ('{item.ItemName}')",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new {
+                ItemName = previousItemName,
+                StandardMarketPrice = previousPrice,
+                PriceVarianceThreshold = previousThreshold,
+                IsActive = previousIsActive
+            }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new {
+                ItemName = item.ItemName,
+                StandardMarketPrice = item.StandardMarketPrice,
+                PriceVarianceThreshold = item.PriceVarianceThreshold,
+                IsActive = item.IsActive
+            }),
+            reason: dto.Reason?.Trim());
+        _context.AdminAuditLogs.Add(updateAudit);
 
         try
         {
@@ -610,6 +706,16 @@ public class AdminService : IAdminService
         item.ConcurrencyVersion++;
         item.LastUpdated = DateTime.UtcNow;
 
+        var deactAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "CatalogItemDeactivated",
+            entityType: "EquipmentCatalog",
+            entityId: itemId.ToString(),
+            description: $"Deactivated catalog item #{itemId} ('{item.ItemName}')",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = true }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = false }));
+        _context.AdminAuditLogs.Add(deactAudit);
+
         try
         {
             await _context.SaveChangesAsync();
@@ -644,6 +750,16 @@ public class AdminService : IAdminService
         item.IsActive = true;
         item.ConcurrencyVersion++;
         item.LastUpdated = DateTime.UtcNow;
+
+        var actAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "CatalogItemActivated",
+            entityType: "EquipmentCatalog",
+            entityId: itemId.ToString(),
+            description: $"Activated catalog item #{itemId} ('{item.ItemName}')",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = false }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = true }));
+        _context.AdminAuditLogs.Add(actAudit);
 
         try
         {
@@ -722,6 +838,771 @@ public class AdminService : IAdminService
             TotalActiveAccounts = totalActive,
             TotalSuspendedAccounts = totalSuspended,
             TotalInactiveAccounts = totalInactive
+        };
+    }
+
+    public async Task<AdminDashboardAnalyticsDto> GetDashboardAnalyticsAsync(string? range, DateTime? customFrom = null, DateTime? customTo = null)
+    {
+        var now = DateTime.UtcNow;
+        string selectedRange = string.IsNullOrWhiteSpace(range) ? "30d" : range.Trim().ToLowerInvariant();
+        DateTime? fromDate;
+        DateTime toDate = now;
+
+        if (selectedRange == "custom" || customFrom.HasValue || customTo.HasValue)
+        {
+            selectedRange = "custom";
+            if (customFrom.HasValue && customTo.HasValue && customFrom.Value > customTo.Value)
+            {
+                throw new ArgumentException("Invalid date range: 'customFrom' cannot be later than 'customTo'.");
+            }
+
+            fromDate = customFrom.HasValue ? DateTime.SpecifyKind(customFrom.Value.Date, DateTimeKind.Utc) : null;
+            toDate = customTo.HasValue ? DateTime.SpecifyKind(customTo.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc) : now;
+        }
+        else
+        {
+            fromDate = selectedRange switch
+            {
+                "7d" => now.AddDays(-7),
+                "30d" => now.AddDays(-30),
+                "90d" => now.AddDays(-90),
+                "this_year" => new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                "all" => null,
+                _ => now.AddDays(-30)
+            };
+            if (selectedRange != "7d" && selectedRange != "30d" && selectedRange != "90d" && selectedRange != "this_year" && selectedRange != "all")
+            {
+                selectedRange = "30d";
+            }
+        }
+
+        // 1. Payment transactions metrics
+        var paymentQuery = _context.PaymentTransactions.AsNoTracking().Where(pt => pt.CreatedAtUtc <= toDate);
+        if (fromDate.HasValue)
+        {
+            paymentQuery = paymentQuery.Where(pt => pt.CreatedAtUtc >= fromDate.Value);
+        }
+        var payments = await paymentQuery.OrderBy(pt => pt.CreatedAtUtc).ToListAsync();
+
+        decimal totalGmv = payments.Sum(p => p.TotalAmount);
+        decimal platformCommission = payments.Sum(p => p.PlatformCommission);
+        decimal electricianEarnings = payments.Sum(p => p.ElectricianEarning);
+
+        var cashSplitTxs = payments.Where(p => string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) ||
+                                               string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase)).ToList();
+        var digitalTxs = payments.Where(p => !string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) &&
+                                             !string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        decimal fullDigitalOnline = digitalTxs.Sum(p => p.TotalAmount);
+        decimal cashSplitOnline = cashSplitTxs.Sum(p => p.PlatformCommission);
+        decimal directCashPaid = cashSplitTxs.Sum(p => p.ElectricianEarning);
+
+        decimal walletLiability = await _context.ElectricianProfiles.SumAsync(ep => (decimal?)ep.AppWalletBalance) ?? 0m;
+
+        var payoutQuery = _context.TechnicianPayoutRecords.AsNoTracking().Where(pr => pr.DisbursedAtUtc <= toDate);
+        if (fromDate.HasValue)
+        {
+            payoutQuery = payoutQuery.Where(pr => pr.DisbursedAtUtc >= fromDate.Value);
+        }
+        decimal totalRecordedPayouts = await payoutQuery.SumAsync(pr => (decimal?)pr.Amount) ?? 0m;
+
+        // 2. Financial Trends (Monthly / Daily points)
+        var financialTrends = new List<FinancialTrendPointDto>();
+        if (payments.Any())
+        {
+            bool isDaily = selectedRange == "7d" || selectedRange == "30d";
+            var grouped = payments.GroupBy(p => isDaily 
+                ? p.CreatedAtUtc.ToString("yyyy-MM-dd") 
+                : p.CreatedAtUtc.ToString("yyyy-MM"));
+
+            foreach (var group in grouped)
+            {
+                var firstDate = group.First().CreatedAtUtc;
+                financialTrends.Add(new FinancialTrendPointDto
+                {
+                    Period = isDaily ? firstDate.ToString("MMM dd") : firstDate.ToString("MMM yyyy"),
+                    Gmv = group.Sum(p => p.TotalAmount),
+                    Commission = group.Sum(p => p.PlatformCommission),
+                    ElectricianEarnings = group.Sum(p => p.ElectricianEarning),
+                    TransactionCount = group.Count()
+                });
+            }
+        }
+
+        // 3. Payment Method Distribution
+        int digitalCount = digitalTxs.Count();
+        decimal digitalGmv = digitalTxs.Sum(p => p.TotalAmount);
+        int cashSplitCount = cashSplitTxs.Count();
+        decimal cashSplitGmv = cashSplitTxs.Sum(p => p.TotalAmount);
+        int totalTxs = payments.Count();
+
+        var paymentMethods = new PaymentMethodDistributionDto
+        {
+            FullDigitalCount = digitalCount,
+            FullDigitalGmv = digitalGmv,
+            CashSplitCount = cashSplitCount,
+            CashSplitGmv = cashSplitGmv,
+            FullDigitalPercentage = totalTxs > 0 ? Math.Round((decimal)digitalCount / totalTxs * 100m, 1) : 0m,
+            CashSplitPercentage = totalTxs > 0 ? Math.Round((decimal)cashSplitCount / totalTxs * 100m, 1) : 0m
+        };
+
+        // 4. Job Status Distribution & Trends
+        var allJobs = await _context.Jobs.AsNoTracking().ToListAsync();
+
+        var jobStatuses = new JobStatusDistributionDto
+        {
+            Pending = allJobs.Count(j => j.Status == "Pending"),
+            Assigned = allJobs.Count(j => j.Status == "Assigned"),
+            InProgress = allJobs.Count(j => j.Status == "InProgress"),
+            Completed = allJobs.Count(j => j.Status == "Completed"),
+            Cancelled = allJobs.Count(j => j.Status == "Cancelled"),
+            Disputed = allJobs.Count(j => j.Status == "Disputed"),
+            Total = allJobs.Count
+        };
+
+        var jobTrends = new List<JobTrendPointDto>();
+        if (allJobs.Count > 0)
+        {
+            bool isDailyJob = selectedRange == "7d" || selectedRange == "30d" || (selectedRange == "custom" && fromDate.HasValue && (toDate - fromDate.Value).TotalDays <= 31);
+            var jobsInRange = allJobs.Where(j => j.CreatedAt <= toDate);
+            if (fromDate.HasValue)
+            {
+                jobsInRange = jobsInRange.Where(j => j.CreatedAt >= fromDate.Value);
+            }
+            var jobsInRangeList = jobsInRange.ToList();
+
+            var groupedJobs = jobsInRangeList.GroupBy(j => isDailyJob
+                ? j.CreatedAt.ToString("yyyy-MM-dd")
+                : j.CreatedAt.ToString("yyyy-MM"));
+
+            foreach (var g in groupedJobs)
+            {
+                var firstDate = g.First().CreatedAt;
+                jobTrends.Add(new JobTrendPointDto
+                {
+                    Period = isDailyJob ? firstDate.ToString("MMM dd") : firstDate.ToString("MMM yyyy"),
+                    CreatedCount = g.Count(),
+                    CompletedCount = g.Count(j => j.Status == "Completed")
+                });
+            }
+        }
+
+        // 5. Technician Statistics
+        var techProfiles = await _context.ElectricianProfiles.AsNoTracking().ToListAsync();
+        var electricianUsers = await _context.Users.AsNoTracking().Where(u => u.Role == "Electrician").ToListAsync();
+
+        var techStats = new TechnicianStatisticsDto
+        {
+            Approved = techProfiles.Count(p => p.VerificationStatus == "Approved"),
+            Pending = techProfiles.Count(p => p.VerificationStatus == "Pending"),
+            Rejected = techProfiles.Count(p => p.VerificationStatus == "Rejected"),
+            SuspendedOrInactive = electricianUsers.Count(u => !u.IsActive || u.AccountStatus == "Suspended" || u.AccountStatus == "Inactive"),
+            Total = techProfiles.Count
+        };
+
+        // 6. Operational Metrics
+        int totalCustomers = await _context.Users.CountAsync(u => u.Role == "Customer");
+        int activeJobs = allJobs.Count(j => j.Status == "Pending" || j.Status == "Assigned" || j.Status == "InProgress");
+        int unassignedJobs = allJobs.Count(j => j.ElectricianId == null && j.Status != "Completed" && j.Status != "Cancelled");
+        int disputedJobs = allJobs.Count(j => j.Status == "Disputed");
+        int emergencyJobs = allJobs.Count(j => j.IsEmergency && j.Status != "Completed" && j.Status != "Cancelled");
+        int flaggedClaims = await _context.JobUsedEquipments.CountAsync(jue => jue.Status == "FlaggedForReview");
+
+        // 7. Operational Alerts
+        var alerts = new List<OperationalAlertDto>();
+        int unassignedEmergency = allJobs.Count(j => j.IsEmergency && j.ElectricianId == null && j.Status != "Completed" && j.Status != "Cancelled");
+        if (unassignedEmergency > 0)
+        {
+            alerts.Add(new OperationalAlertDto
+            {
+                Severity = "critical",
+                Title = "Unassigned Emergency Jobs",
+                Message = $"{unassignedEmergency} emergency job(s) require immediate electrician dispatch.",
+                ActionLink = "/admin/jobs?emergency=true",
+                Count = unassignedEmergency
+            });
+        }
+
+        if (disputedJobs > 0)
+        {
+            alerts.Add(new OperationalAlertDto
+            {
+                Severity = "critical",
+                Title = "Active Job Disputes",
+                Message = $"{disputedJobs} job(s) are disputed and require administrative mediation.",
+                ActionLink = "/admin/jobs?status=Disputed",
+                Count = disputedJobs
+            });
+        }
+
+        var twentyFourHoursAgo = now.AddHours(-24);
+        int stuckAssigned = allJobs.Count(j => j.Status == "Assigned" &&
+            ((j.AssignedAt.HasValue && j.AssignedAt.Value < twentyFourHoursAgo) || (!j.AssignedAt.HasValue && j.CreatedAt < twentyFourHoursAgo)));
+        if (stuckAssigned > 0)
+        {
+            alerts.Add(new OperationalAlertDto
+            {
+                Severity = "warning",
+                Title = "Assigned Jobs Inactive > 24h",
+                Message = $"{stuckAssigned} job(s) assigned over 24 hours ago have not started.",
+                ActionLink = "/admin/jobs?status=Assigned",
+                Count = stuckAssigned
+            });
+        }
+
+        var sevenDaysAgo = now.AddDays(-7);
+        int overdueInProgress = allJobs.Count(j => j.Status == "InProgress" && j.CreatedAt < sevenDaysAgo);
+        if (overdueInProgress > 0)
+        {
+            alerts.Add(new OperationalAlertDto
+            {
+                Severity = "warning",
+                Title = "Jobs In Progress > 7 Days",
+                Message = $"{overdueInProgress} job(s) have been in progress for over a week.",
+                ActionLink = "/admin/jobs?status=InProgress",
+                Count = overdueInProgress
+            });
+        }
+
+        if (techStats.Pending > 0)
+        {
+            alerts.Add(new OperationalAlertDto
+            {
+                Severity = "info",
+                Title = "Pending Technician Verifications",
+                Message = $"{techStats.Pending} electrician candidate(s) awaiting credential approval.",
+                ActionLink = "/admin/approvals",
+                Count = techStats.Pending
+            });
+        }
+
+        if (flaggedClaims > 0)
+        {
+            alerts.Add(new OperationalAlertDto
+            {
+                Severity = "warning",
+                Title = "Flagged Equipment Price Claims",
+                Message = $"{flaggedClaims} equipment claim(s) exceed standard market price threshold.",
+                ActionLink = "/admin/equipment-claims",
+                Count = flaggedClaims
+            });
+        }
+
+        // 8. Recent Activity Feeds
+        var recentJobs = await _context.Jobs
+            .AsNoTracking()
+            .Include(j => j.Customer)
+            .Include(j => j.Electrician)
+            .OrderByDescending(j => j.CreatedAt)
+            .Take(5)
+            .Select(j => new RecentJobActivityDto
+            {
+                JobId = j.JobId,
+                JobType = j.JobType,
+                Description = j.Description,
+                CustomerName = j.Customer != null ? j.Customer.Name : "Customer",
+                ElectricianName = j.Electrician != null ? j.Electrician.Name : null,
+                Status = j.Status,
+                IsEmergency = j.IsEmergency,
+                CreatedAt = j.CreatedAt
+            })
+            .ToListAsync();
+
+        var recentAudits = await _context.AdminAuditLogs
+            .AsNoTracking()
+            .Include(a => a.AdminUser)
+            .OrderByDescending(a => a.CreatedAtUtc)
+            .Take(5)
+            .Select(a => new RecentAuditActivityDto
+            {
+                AuditLogId = a.AuditLogId,
+                ActionType = a.ActionType,
+                EntityType = a.EntityType,
+                EntityId = a.EntityId,
+                Description = a.Description,
+                AdminEmail = a.AdminUser != null ? a.AdminUser.Email : null,
+                CreatedAtUtc = a.CreatedAtUtc
+            })
+            .ToListAsync();
+
+        return new AdminDashboardAnalyticsDto
+        {
+            DateRange = selectedRange,
+            FromDateUtc = fromDate,
+            ToDateUtc = toDate,
+            TotalGmv = totalGmv,
+            PlatformCommission = platformCommission,
+            FullDigitalOnlineCollections = fullDigitalOnline,
+            CashSplitOnlineCollections = cashSplitOnline,
+            DirectCashPaidToElectricians = directCashPaid,
+            ElectricianEarnings = electricianEarnings,
+            OutstandingWalletLiability = walletLiability,
+            TotalRecordedPayouts = totalRecordedPayouts,
+            PaymentTransactionCount = totalTxs,
+            FinancialTrends = financialTrends,
+            PaymentMethods = paymentMethods,
+            JobStatuses = jobStatuses,
+            JobTrends = jobTrends,
+            TechnicianStats = techStats,
+            TotalCustomers = totalCustomers,
+            TotalTechnicians = techStats.Total,
+            PendingTechnicianVerifications = techStats.Pending,
+            ActiveJobs = activeJobs,
+            UnassignedJobs = unassignedJobs,
+            DisputedJobs = disputedJobs,
+            EmergencyJobs = emergencyJobs,
+            FlaggedEquipmentClaims = flaggedClaims,
+            OperationalAlerts = alerts,
+            RecentJobs = recentJobs,
+            RecentAudits = recentAudits
+        };
+    }
+
+    public async Task<AdminAdvancedAnalyticsDto> GetAdvancedAnalyticsAsync(string? range, DateTime? customFrom = null, DateTime? customTo = null)
+    {
+        var now = DateTime.UtcNow;
+        string selectedRange = string.IsNullOrWhiteSpace(range) ? "30d" : range.Trim().ToLowerInvariant();
+        DateTime? fromDate;
+        DateTime toDate = now;
+        DateTime? priorFromDate = null;
+        DateTime? priorToDate = null;
+
+        if (selectedRange == "custom" || customFrom.HasValue || customTo.HasValue)
+        {
+            selectedRange = "custom";
+            if (customFrom.HasValue && customTo.HasValue && customFrom.Value > customTo.Value)
+            {
+                throw new ArgumentException("Invalid date range: 'customFrom' cannot be later than 'customTo'.");
+            }
+
+            fromDate = customFrom.HasValue ? DateTime.SpecifyKind(customFrom.Value.Date, DateTimeKind.Utc) : null;
+            toDate = customTo.HasValue ? DateTime.SpecifyKind(customTo.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc) : now;
+
+            if (fromDate.HasValue)
+            {
+                var duration = toDate - fromDate.Value;
+                priorToDate = fromDate.Value.AddTicks(-1);
+                priorFromDate = priorToDate.Value.Subtract(duration);
+            }
+        }
+        else
+        {
+            switch (selectedRange)
+            {
+                case "7d":
+                    fromDate = now.AddDays(-7);
+                    priorFromDate = now.AddDays(-14);
+                    priorToDate = now.AddDays(-7).AddTicks(-1);
+                    break;
+                case "30d":
+                    fromDate = now.AddDays(-30);
+                    priorFromDate = now.AddDays(-60);
+                    priorToDate = now.AddDays(-30).AddTicks(-1);
+                    break;
+                case "90d":
+                    fromDate = now.AddDays(-90);
+                    priorFromDate = now.AddDays(-180);
+                    priorToDate = now.AddDays(-90).AddTicks(-1);
+                    break;
+                case "this_year":
+                    fromDate = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                    priorFromDate = new DateTime(now.Year - 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                    priorToDate = new DateTime(now.Year - 1, now.Month, Math.Min(now.Day, DateTime.DaysInMonth(now.Year - 1, now.Month)), now.Hour, now.Minute, now.Second, DateTimeKind.Utc);
+                    break;
+                case "all":
+                    fromDate = null;
+                    priorFromDate = null;
+                    priorToDate = null;
+                    break;
+                default:
+                    selectedRange = "30d";
+                    fromDate = now.AddDays(-30);
+                    priorFromDate = now.AddDays(-60);
+                    priorToDate = now.AddDays(-30).AddTicks(-1);
+                    break;
+            }
+        }
+
+        decimal? CalcPct(decimal current, decimal prior)
+        {
+            if (prior == 0m) return current > 0m ? 100m : (current < 0m ? -100m : 0m);
+            return Math.Round(((current - prior) / Math.Abs(prior)) * 100m, 1);
+        }
+
+        // =========================================================================
+        // 1. FINANCIAL PERFORMANCE INSIGHTS
+        // =========================================================================
+        var allPayments = await _context.PaymentTransactions.AsNoTracking().Where(p => p.CreatedAtUtc <= toDate).ToListAsync();
+        var currentPayments = allPayments.Where(p => !fromDate.HasValue || p.CreatedAtUtc >= fromDate.Value).ToList();
+        var priorPayments = (priorFromDate.HasValue && priorToDate.HasValue)
+            ? allPayments.Where(p => p.CreatedAtUtc >= priorFromDate.Value && p.CreatedAtUtc <= priorToDate.Value).ToList()
+            : new List<PaymentTransaction>();
+
+        decimal totalGmv = currentPayments.Sum(p => p.TotalAmount);
+        decimal priorGmv = priorPayments.Sum(p => p.TotalAmount);
+        decimal platformCommission = currentPayments.Sum(p => p.PlatformCommission);
+        decimal priorCommission = priorPayments.Sum(p => p.PlatformCommission);
+        decimal electricianEarnings = currentPayments.Sum(p => p.ElectricianEarning);
+        decimal priorEarnings = priorPayments.Sum(p => p.ElectricianEarning);
+
+        var cashSplitTxs = currentPayments.Where(p => string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) ||
+                                                      string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase)).ToList();
+        var digitalTxs = currentPayments.Where(p => !string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) &&
+                                                    !string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        decimal fullDigitalOnline = digitalTxs.Sum(p => p.TotalAmount);
+        decimal cashSplitOnline = cashSplitTxs.Sum(p => p.PlatformCommission);
+        decimal directCashPaid = cashSplitTxs.Sum(p => p.ElectricianEarning);
+
+        decimal walletLiability = await _context.ElectricianProfiles.SumAsync(ep => (decimal?)ep.AppWalletBalance) ?? 0m;
+
+        var allPayouts = await _context.TechnicianPayoutRecords.AsNoTracking().Where(pr => pr.DisbursedAtUtc <= toDate).ToListAsync();
+        var currentPayouts = allPayouts.Where(pr => !fromDate.HasValue || pr.DisbursedAtUtc >= fromDate.Value).ToList();
+        var priorPayouts = (priorFromDate.HasValue && priorToDate.HasValue)
+            ? allPayouts.Where(pr => pr.DisbursedAtUtc >= priorFromDate.Value && pr.DisbursedAtUtc <= priorToDate.Value).ToList()
+            : new List<TechnicianPayoutRecord>();
+
+        decimal totalRecordedPayouts = currentPayouts.Sum(pr => pr.Amount);
+        decimal priorRecordedPayouts = priorPayouts.Sum(pr => pr.Amount);
+
+        bool isDaily = selectedRange == "7d" || selectedRange == "30d" || (selectedRange == "custom" && fromDate.HasValue && (toDate - fromDate.Value).TotalDays <= 31);
+        var finTrends = new List<FinancialBiTrendPointDto>();
+        if (currentPayments.Any())
+        {
+            var grouped = currentPayments.GroupBy(p => isDaily
+                ? p.CreatedAtUtc.ToString("yyyy-MM-dd")
+                : p.CreatedAtUtc.ToString("yyyy-MM"));
+
+            foreach (var g in grouped)
+            {
+                var firstDate = g.First().CreatedAtUtc;
+                var gDigital = g.Where(p => !string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) &&
+                                            !string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase));
+                var gSplit = g.Where(p => string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase));
+
+                finTrends.Add(new FinancialBiTrendPointDto
+                {
+                    Period = isDaily ? firstDate.ToString("MMM dd") : firstDate.ToString("MMM yyyy"),
+                    Gmv = g.Sum(p => p.TotalAmount),
+                    Commission = g.Sum(p => p.PlatformCommission),
+                    ElectricianEarnings = g.Sum(p => p.ElectricianEarning),
+                    OnlineCollections = gDigital.Sum(p => p.TotalAmount) + gSplit.Sum(p => p.PlatformCommission),
+                    DirectCash = gSplit.Sum(p => p.ElectricianEarning),
+                    TransactionCount = g.Count()
+                });
+            }
+        }
+
+        var financialInsights = new FinancialBiInsightsDto
+        {
+            TotalGmv = totalGmv,
+            PriorGmv = priorGmv,
+            GmvChangePercentage = CalcPct(totalGmv, priorGmv),
+            PlatformCommission = platformCommission,
+            PriorPlatformCommission = priorCommission,
+            CommissionChangePercentage = CalcPct(platformCommission, priorCommission),
+            FullDigitalOnlineCollections = fullDigitalOnline,
+            FullDigitalCount = digitalTxs.Count,
+            FullDigitalGmv = digitalTxs.Sum(p => p.TotalAmount),
+            CashSplitOnlineCollections = cashSplitOnline,
+            CashSplitCount = cashSplitTxs.Count,
+            CashSplitGmv = cashSplitTxs.Sum(p => p.TotalAmount),
+            OnlineCollectionsTotal = fullDigitalOnline + cashSplitOnline,
+            DirectCashPaidToElectricians = directCashPaid,
+            ElectricianEarnings = electricianEarnings,
+            PriorElectricianEarnings = priorEarnings,
+            EarningsChangePercentage = CalcPct(electricianEarnings, priorEarnings),
+            OutstandingWalletLiability = walletLiability,
+            TotalRecordedPayouts = totalRecordedPayouts,
+            PriorRecordedPayouts = priorRecordedPayouts,
+            PayoutsChangePercentage = CalcPct(totalRecordedPayouts, priorRecordedPayouts),
+            TotalTransactions = currentPayments.Count,
+            PriorTransactions = priorPayments.Count,
+            Trends = finTrends
+        };
+
+        // =========================================================================
+        // 2. JOB LIFECYCLE & DISPATCH PERFORMANCE
+        // =========================================================================
+        var allJobs = await _context.Jobs.AsNoTracking().Where(j => j.CreatedAt <= toDate).ToListAsync();
+        var currentJobs = allJobs.Where(j => !fromDate.HasValue || j.CreatedAt >= fromDate.Value).ToList();
+        var priorJobs = (priorFromDate.HasValue && priorToDate.HasValue)
+            ? allJobs.Where(j => j.CreatedAt >= priorFromDate.Value && j.CreatedAt <= priorToDate.Value).ToList()
+            : new List<Job>();
+
+        int totalCreated = currentJobs.Count;
+        int priorCreated = priorJobs.Count;
+
+        int pendingJobs = currentJobs.Count(j => j.Status == "Pending");
+        int assignedJobs = currentJobs.Count(j => j.Status == "Assigned");
+        int inProgressJobs = currentJobs.Count(j => j.Status == "InProgress");
+        int completedJobs = currentJobs.Count(j => j.Status == "Completed");
+        int cancelledJobs = currentJobs.Count(j => j.Status == "Cancelled");
+        int disputedJobs = currentJobs.Count(j => j.Status == "Disputed");
+        int emergencyJobs = currentJobs.Count(j => j.IsEmergency);
+
+        decimal completionRate = totalCreated > 0 ? Math.Round((decimal)completedJobs / totalCreated * 100m, 1) : 0m;
+        decimal cancellationRate = totalCreated > 0 ? Math.Round((decimal)cancelledJobs / totalCreated * 100m, 1) : 0m;
+        decimal disputeRate = totalCreated > 0 ? Math.Round((decimal)disputedJobs / totalCreated * 100m, 1) : 0m;
+
+        // Timestamp-supported averages
+        var assignedWithTimestamps = currentJobs.Where(j => j.AssignedAt.HasValue && j.AssignedAt.Value >= j.CreatedAt).ToList();
+        double? avgAssignmentMinutes = assignedWithTimestamps.Any()
+            ? Math.Round(assignedWithTimestamps.Average(j => (j.AssignedAt!.Value - j.CreatedAt).TotalMinutes), 1)
+            : null;
+
+        var completedWithTimestamps = currentJobs.Where(j => j.Status == "Completed" && j.CompletedAt.HasValue && j.CompletedAt.Value >= j.CreatedAt).ToList();
+        double? avgCompletionHours = completedWithTimestamps.Any()
+            ? Math.Round(completedWithTimestamps.Average(j => (j.CompletedAt!.Value - j.CreatedAt).TotalHours), 1)
+            : null;
+
+        var jobTrends = new List<JobBiTrendPointDto>();
+        if (currentJobs.Any())
+        {
+            var grouped = currentJobs.GroupBy(j => isDaily
+                ? j.CreatedAt.ToString("yyyy-MM-dd")
+                : j.CreatedAt.ToString("yyyy-MM"));
+
+            foreach (var g in grouped)
+            {
+                var firstDate = g.First().CreatedAt;
+                jobTrends.Add(new JobBiTrendPointDto
+                {
+                    Period = isDaily ? firstDate.ToString("MMM dd") : firstDate.ToString("MMM yyyy"),
+                    CreatedCount = g.Count(),
+                    CompletedCount = g.Count(j => j.Status == "Completed"),
+                    CancelledCount = g.Count(j => j.Status == "Cancelled")
+                });
+            }
+        }
+
+        var jobTypes = currentJobs.GroupBy(j => j.JobType)
+            .Select(g => new JobTypeBreakdownDto
+            {
+                JobType = g.Key,
+                Count = g.Count(),
+                Percentage = totalCreated > 0 ? Math.Round((decimal)g.Count() / totalCreated * 100m, 1) : 0m
+            })
+            .OrderByDescending(t => t.Count)
+            .ToList();
+
+        var jobInsights = new JobPerformanceBiDto
+        {
+            TotalJobsCreated = totalCreated,
+            PriorJobsCreated = priorCreated,
+            JobsCreatedChangePercentage = CalcPct(totalCreated, priorCreated),
+            PendingJobs = pendingJobs,
+            AssignedJobs = assignedJobs,
+            InProgressJobs = inProgressJobs,
+            CompletedJobs = completedJobs,
+            CancelledJobs = cancelledJobs,
+            DisputedJobs = disputedJobs,
+            EmergencyJobs = emergencyJobs,
+            CompletionRate = completionRate,
+            CancellationRate = cancellationRate,
+            DisputeRate = disputeRate,
+            AvgTimeToAssignmentMinutes = avgAssignmentMinutes,
+            AvgTimeToCompletionHours = avgCompletionHours,
+            Trends = jobTrends,
+            Types = jobTypes
+        };
+
+        // =========================================================================
+        // 3. TECHNICIAN WORKFORCE PERFORMANCE
+        // =========================================================================
+        var allProfiles = await _context.ElectricianProfiles.AsNoTracking().ToListAsync();
+        var allElecUsers = await _context.Users.AsNoTracking().Where(u => u.Role == "Electrician").ToListAsync();
+
+        int totalTechs = allProfiles.Count;
+        int approvedTechs = allProfiles.Count(p => p.VerificationStatus == "Approved");
+        int pendingTechs = allProfiles.Count(p => p.VerificationStatus == "Pending");
+        int rejectedTechs = allProfiles.Count(p => p.VerificationStatus == "Rejected");
+        int suspendedTechs = allElecUsers.Count(u => !u.IsActive || u.AccountStatus == "Suspended" || u.AccountStatus == "Inactive");
+
+        // Real jobs handled by electricians
+        var assignedElectricianIds = allJobs.Where(j => j.ElectricianId.HasValue).Select(j => j.ElectricianId!.Value).ToHashSet();
+        int activeTechsWithJobs = allProfiles.Count(p => p.VerificationStatus == "Approved" && assignedElectricianIds.Contains(p.UserId));
+        decimal utilizationRate = approvedTechs > 0 ? Math.Min(100m, Math.Round((decimal)activeTechsWithJobs / approvedTechs * 100m, 1)) : 0m;
+
+        var leaderboard = new List<TechnicianLeaderboardItemDto>();
+        foreach (var p in allProfiles.Where(p => p.VerificationStatus == "Approved"))
+        {
+            var u = allElecUsers.FirstOrDefault(x => x.UserId == p.UserId);
+            var techJobs = allJobs.Where(j => j.ElectricianId == p.UserId).ToList();
+            int handled = techJobs.Count;
+            int comp = techJobs.Count(j => j.Status == "Completed");
+            int inProg = techJobs.Count(j => j.Status == "InProgress");
+            decimal compRate = handled > 0 ? Math.Round((decimal)comp / handled * 100m, 1) : 0m;
+
+            leaderboard.Add(new TechnicianLeaderboardItemDto
+            {
+                ProfileId = p.ProfileId,
+                UserId = p.UserId,
+                Name = u?.Name ?? $"Electrician #{p.UserId}",
+                Email = u?.Email ?? string.Empty,
+                Specialization = p.Specialization ?? "General Electrician",
+                VerificationStatus = p.VerificationStatus,
+                JobsHandled = handled,
+                CompletedJobs = comp,
+                InProgressJobs = inProg,
+                CompletionRate = compRate,
+                AppWalletBalance = p.AppWalletBalance
+            });
+        }
+        leaderboard = leaderboard.OrderByDescending(l => l.JobsHandled).ThenByDescending(l => l.CompletedJobs).ToList();
+
+        var techInsights = new TechnicianPerformanceBiDto
+        {
+            TotalRegisteredTechnicians = totalTechs,
+            ApprovedTechnicians = approvedTechs,
+            PendingApprovals = pendingTechs,
+            RejectedApplications = rejectedTechs,
+            SuspendedOrInactive = suspendedTechs,
+            ActiveTechniciansWithJobs = activeTechsWithJobs,
+            TechnicianUtilizationRate = utilizationRate,
+            Leaderboard = leaderboard
+        };
+
+        // =========================================================================
+        // 4. EQUIPMENT INSIGHTS & CLAIMS
+        // =========================================================================
+        var allEquip = await _context.JobUsedEquipments.AsNoTracking().Include(jue => jue.Job).Include(jue => jue.EquipmentCatalog).ToListAsync();
+        var currentEquip = allEquip.Where(e => e.Job != null && e.Job.CreatedAt <= toDate && (!fromDate.HasValue || e.Job.CreatedAt >= fromDate.Value)).ToList();
+        var priorEquip = (priorFromDate.HasValue && priorToDate.HasValue)
+            ? allEquip.Where(e => e.Job != null && e.Job.CreatedAt >= priorFromDate.Value && e.Job.CreatedAt <= priorToDate.Value).ToList()
+            : new List<JobUsedEquipment>();
+
+        decimal totalEquipSpend = currentEquip.Sum(e => e.ClaimedPrice * e.Quantity);
+        decimal priorEquipSpend = priorEquip.Sum(e => e.ClaimedPrice * e.Quantity);
+
+        int claimsApproved = currentEquip.Count(e => e.Status == "AutoApproved" || e.Status == "AdminApproved");
+        int claimsRejected = currentEquip.Count(e => e.Status == "AdminRejected");
+        int claimsFlagged = currentEquip.Count(e => e.Status == "FlaggedForReview");
+        int totalClaims = currentEquip.Count;
+        decimal claimApprovalRate = totalClaims > 0 ? Math.Round((decimal)claimsApproved / totalClaims * 100m, 1) : 0m;
+
+        int totalCatalogItems = await _context.EquipmentCatalog.CountAsync();
+        int activeCatalogItems = await _context.EquipmentCatalog.CountAsync(c => c.IsActive);
+
+        var topUsed = currentEquip.GroupBy(e => e.ItemName)
+            .Select(g => new TopUsedEquipmentItemDto
+            {
+                CatalogItemId = g.First().CatalogItemId,
+                ItemName = g.Key,
+                Category = g.First().EquipmentCatalog?.Category ?? "General",
+                UsageCount = g.Count(),
+                TotalQuantity = g.Sum(e => e.Quantity),
+                TotalSpending = g.Sum(e => e.ClaimedPrice * e.Quantity)
+            })
+            .OrderByDescending(t => t.UsageCount)
+            .ThenByDescending(t => t.TotalSpending)
+            .Take(10)
+            .ToList();
+
+        var recentPriceChanges = await _context.EquipmentPriceHistories
+            .AsNoTracking()
+            .Include(h => h.EquipmentCatalog)
+            .Include(h => h.ChangedByAdmin)
+            .OrderByDescending(h => h.EffectiveDateUtc)
+            .Take(10)
+            .Select(h => new EquipmentPriceChangeItemDto
+            {
+                Id = h.Id,
+                CatalogItemId = h.CatalogItemId,
+                ItemName = h.EquipmentCatalog != null ? h.EquipmentCatalog.ItemName : $"Item #{h.CatalogItemId}",
+                OldPrice = h.OldPrice,
+                NewPrice = h.NewPrice,
+                ChangePercentage = h.ChangePercentage,
+                Reason = h.Reason,
+                ChangedByAdminName = h.ChangedByAdmin != null ? h.ChangedByAdmin.Name : "Admin",
+                EffectiveDateUtc = h.EffectiveDateUtc
+            })
+            .ToListAsync();
+
+        var equipmentInsights = new EquipmentBiInsightsDto
+        {
+            TotalCatalogItems = totalCatalogItems,
+            ActiveCatalogItems = activeCatalogItems,
+            TotalEquipmentClaims = totalClaims,
+            TotalEquipmentSpending = totalEquipSpend,
+            PriorEquipmentSpending = priorEquipSpend,
+            SpendingChangePercentage = CalcPct(totalEquipSpend, priorEquipSpend),
+            ClaimsApprovedCount = claimsApproved,
+            ClaimsRejectedCount = claimsRejected,
+            ClaimsFlaggedCount = claimsFlagged,
+            ClaimApprovalRate = claimApprovalRate,
+            TopUsedEquipment = topUsed,
+            RecentPriceChanges = recentPriceChanges
+        };
+
+        // =========================================================================
+        // 5. PLATFORM USER & DEMAND GROWTH
+        // =========================================================================
+        var allUsers = await _context.Users.AsNoTracking().Where(u => u.CreatedAt <= toDate).ToListAsync();
+        var currentCustomers = allUsers.Where(u => u.Role == "Customer" && (!fromDate.HasValue || u.CreatedAt >= fromDate.Value)).ToList();
+        var priorCustomers = (priorFromDate.HasValue && priorToDate.HasValue)
+            ? allUsers.Where(u => u.Role == "Customer" && u.CreatedAt >= priorFromDate.Value && u.CreatedAt <= priorToDate.Value).ToList()
+            : new List<User>();
+
+        var currentTechs = allUsers.Where(u => u.Role == "Electrician" && (!fromDate.HasValue || u.CreatedAt >= fromDate.Value)).ToList();
+        var priorTechs = (priorFromDate.HasValue && priorToDate.HasValue)
+            ? allUsers.Where(u => u.Role == "Electrician" && u.CreatedAt >= priorFromDate.Value && u.CreatedAt <= priorToDate.Value).ToList()
+            : new List<User>();
+
+        var growthTrends = new List<GrowthBiTrendPointDto>();
+        var growthEntities = allUsers.Select(u => new { u.CreatedAt, Type = u.Role })
+            .Concat(allJobs.Select(j => new { CreatedAt = j.CreatedAt, Type = "Job" }))
+            .Where(x => !fromDate.HasValue || x.CreatedAt >= fromDate.Value)
+            .ToList();
+
+        if (growthEntities.Any())
+        {
+            var grouped = growthEntities.GroupBy(x => isDaily
+                ? x.CreatedAt.ToString("yyyy-MM-dd")
+                : x.CreatedAt.ToString("yyyy-MM"));
+
+            foreach (var g in grouped)
+            {
+                var firstDate = g.First().CreatedAt;
+                growthTrends.Add(new GrowthBiTrendPointDto
+                {
+                    Period = isDaily ? firstDate.ToString("MMM dd") : firstDate.ToString("MMM yyyy"),
+                    NewCustomers = g.Count(x => x.Type == "Customer"),
+                    NewTechnicians = g.Count(x => x.Type == "Electrician"),
+                    NewJobs = g.Count(x => x.Type == "Job")
+                });
+            }
+        }
+
+        var growthInsights = new PlatformGrowthBiDto
+        {
+            TotalUsers = allUsers.Count,
+            TotalCustomers = allUsers.Count(u => u.Role == "Customer"),
+            TotalElectricians = allUsers.Count(u => u.Role == "Electrician"),
+            ActiveAccounts = allUsers.Count(u => u.IsActive && u.AccountStatus == "Active"),
+            InactiveOrSuspendedAccounts = allUsers.Count(u => !u.IsActive || u.AccountStatus == "Inactive" || u.AccountStatus == "Suspended"),
+            NewCustomersInPeriod = currentCustomers.Count,
+            PriorNewCustomers = priorCustomers.Count,
+            CustomerGrowthRate = CalcPct(currentCustomers.Count, priorCustomers.Count),
+            NewTechniciansInPeriod = currentTechs.Count,
+            PriorNewTechnicians = priorTechs.Count,
+            TechnicianGrowthRate = CalcPct(currentTechs.Count, priorTechs.Count),
+            Trends = growthTrends
+        };
+
+        return new AdminAdvancedAnalyticsDto
+        {
+            Range = selectedRange,
+            FromDateUtc = fromDate,
+            ToDateUtc = toDate,
+            PriorFromDateUtc = priorFromDate,
+            PriorToDateUtc = priorToDate,
+            Financial = financialInsights,
+            Jobs = jobInsights,
+            Technicians = techInsights,
+            Equipment = equipmentInsights,
+            Growth = growthInsights
         };
     }
 
@@ -860,6 +1741,17 @@ public class AdminService : IAdminService
         claim.ReviewedByAdminId = adminUserId;
         claim.ReviewedAt = DateTime.UtcNow;
 
+        var claimApproveAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "ClaimApproved",
+            entityType: "JobUsedEquipment",
+            entityId: claimId.ToString(),
+            description: $"Approved equipment price claim #{claimId} ('{claim.ItemName}') for Job #{claim.JobId}",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { Status = "FlaggedForReview" }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { Status = "AdminApproved", ReviewNotes = reviewNotes?.Trim() }),
+            reason: reviewNotes?.Trim());
+        _context.AdminAuditLogs.Add(claimApproveAudit);
+
         try
         {
             await _context.SaveChangesAsync();
@@ -902,6 +1794,17 @@ public class AdminService : IAdminService
         claim.AdminReviewNotes = rejectionReason.Trim();
         claim.ReviewedByAdminId = adminUserId;
         claim.ReviewedAt = DateTime.UtcNow;
+
+        var claimRejectAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "ClaimRejected",
+            entityType: "JobUsedEquipment",
+            entityId: claimId.ToString(),
+            description: $"Rejected equipment price claim #{claimId} ('{claim.ItemName}') for Job #{claim.JobId}",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { Status = "FlaggedForReview" }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { Status = "AdminRejected", ReviewNotes = rejectionReason.Trim() }),
+            reason: rejectionReason.Trim());
+        _context.AdminAuditLogs.Add(claimRejectAudit);
 
         try
         {
@@ -1117,12 +2020,23 @@ public class AdminService : IAdminService
             return UserActionResult<UserSummaryDto>.Invalid($"Account for '{user.Name}' is already active.");
         }
 
+        var previousStatus = user.AccountStatus;
         user.IsActive = true;
         user.AccountStatus = "Active";
         user.SuspensionReason = null;
         user.DeactivatedAt = null;
         user.SuspendedAt = null;
         user.ConcurrencyVersion++;
+
+        var userAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "UserActivated",
+            entityType: "User",
+            entityId: user.UserId.ToString(),
+            description: $"Activated user account for '{user.Name}' ({user.Email})",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = false, AccountStatus = previousStatus }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = true, AccountStatus = "Active" }));
+        _context.AdminAuditLogs.Add(userAudit);
 
         try
         {
@@ -1165,6 +2079,7 @@ public class AdminService : IAdminService
             return UserActionResult<UserSummaryDto>.Invalid($"Account for '{user.Name}' is already deactivated.");
         }
 
+        var previousStatus = user.AccountStatus;
         user.IsActive = false;
         user.AccountStatus = "Inactive";
         user.DeactivatedAt = DateTime.UtcNow;
@@ -1175,6 +2090,16 @@ public class AdminService : IAdminService
         {
             user.ElectricianProfile.IsOnline = false;
         }
+
+        var userAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "UserDeactivated",
+            entityType: "User",
+            entityId: user.UserId.ToString(),
+            description: $"Deactivated user account for '{user.Name}' ({user.Email})",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = true, AccountStatus = previousStatus }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = false, AccountStatus = "Inactive" }));
+        _context.AdminAuditLogs.Add(userAudit);
 
         try
         {
@@ -1222,6 +2147,7 @@ public class AdminService : IAdminService
             return UserActionResult<UserSummaryDto>.Invalid($"Account for '{user.Name}' is already suspended.");
         }
 
+        var previousStatus = user.AccountStatus;
         user.IsActive = false;
         user.AccountStatus = "Suspended";
         user.SuspensionReason = reason.Trim();
@@ -1233,6 +2159,17 @@ public class AdminService : IAdminService
         {
             user.ElectricianProfile.IsOnline = false;
         }
+
+        var userAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "UserSuspended",
+            entityType: "User",
+            entityId: user.UserId.ToString(),
+            description: $"Suspended user account for '{user.Name}' ({user.Email})",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = user.IsActive, AccountStatus = previousStatus }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = false, AccountStatus = "Suspended", SuspensionReason = reason.Trim() }),
+            reason: reason.Trim());
+        _context.AdminAuditLogs.Add(userAudit);
 
         try
         {
@@ -1270,11 +2207,22 @@ public class AdminService : IAdminService
             return UserActionResult<UserSummaryDto>.Invalid($"Only suspended accounts can be restored. Current account status for '{user.Name}' is '{user.AccountStatus}'.");
         }
 
+        var previousStatus = user.AccountStatus;
         user.IsActive = true;
         user.AccountStatus = "Active";
         user.SuspensionReason = null;
         user.SuspendedAt = null;
         user.ConcurrencyVersion++;
+
+        var userAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "UserRestored",
+            entityType: "User",
+            entityId: user.UserId.ToString(),
+            description: $"Restored suspended user account for '{user.Name}' ({user.Email}) to active status",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = false, AccountStatus = previousStatus, SuspensionReason = user.SuspensionReason }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { IsActive = true, AccountStatus = "Active", SuspensionReason = (string?)null }));
+        _context.AdminAuditLogs.Add(userAudit);
 
         try
         {
@@ -1783,6 +2731,16 @@ public class AdminService : IAdminService
         job.AssignedAt = DateTime.UtcNow;
         job.ConcurrencyVersion++;
 
+        var assignAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "JobAssigned",
+            entityType: "Job",
+            entityId: jobId.ToString(),
+            description: $"Assigned Job #{jobId} to Electrician {profile.User.Name} (User #{dto.ElectricianId})",
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { ElectricianId = dto.ElectricianId, Status = "Assigned" }),
+            reason: dto.Notes?.Trim());
+        _context.AdminAuditLogs.Add(assignAudit);
+
         try
         {
             await _context.SaveChangesAsync();
@@ -1877,10 +2835,22 @@ public class AdminService : IAdminService
             return JobActionResult<AdminJobDetailDto>.Invalid($"Cannot reassign Job #{jobId}: Electrician account is {newProfile.User.AccountStatus.ToLowerInvariant()}. Inactive or suspended technicians cannot receive assignments.");
         }
 
+        var oldElectricianId = job.ElectricianId;
         job.ElectricianId = dto.NewElectricianId;
         job.AssignedByAdminId = adminUserId;
         job.AssignedAt = DateTime.UtcNow;
         job.ConcurrencyVersion++;
+
+        var reassignAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "JobReassigned",
+            entityType: "Job",
+            entityId: jobId.ToString(),
+            description: $"Reassigned Job #{jobId} from Electrician #{oldElectricianId} to Electrician {newProfile.User.Name} (User #{dto.NewElectricianId})",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { ElectricianId = oldElectricianId }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { ElectricianId = dto.NewElectricianId }),
+            reason: dto.Reason.Trim());
+        _context.AdminAuditLogs.Add(reassignAudit);
 
         try
         {
@@ -1944,11 +2914,23 @@ public class AdminService : IAdminService
             return JobActionResult<AdminJobDetailDto>.Conflict($"Concurrency conflict: Job #{jobId} has been modified by another process. Current version is v{job.ConcurrencyVersion}. Please reload.");
         }
 
+        var previousStatus = job.Status;
         job.Status = "Cancelled";
         job.CancelledAt = DateTime.UtcNow;
         job.CancelledByUserId = adminUserId;
         job.CancellationReason = dto.Reason.Trim();
         job.ConcurrencyVersion++;
+
+        var cancelAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "JobCancelled",
+            entityType: "Job",
+            entityId: jobId.ToString(),
+            description: $"Cancelled Job #{jobId} (previous status: '{previousStatus}')",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { Status = previousStatus }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { Status = "Cancelled", CancellationReason = dto.Reason.Trim() }),
+            reason: dto.Reason.Trim());
+        _context.AdminAuditLogs.Add(cancelAudit);
 
         try
         {
@@ -2005,6 +2987,16 @@ public class AdminService : IAdminService
         job.DisputeResolutionNotes = dto.ResolutionNotes.Trim();
         job.ConcurrencyVersion++;
 
+        var disputeAudit = _auditService.CreateAuditEntry(
+            adminUserId: adminUserId,
+            actionType: "JobDisputeResolved",
+            entityType: "Job",
+            entityId: jobId.ToString(),
+            description: $"Resolved dispute for Job #{jobId}",
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { DisputeResolvedAt = job.DisputeResolvedAt, ResolutionNotes = dto.ResolutionNotes.Trim() }),
+            reason: dto.ResolutionNotes.Trim());
+        _context.AdminAuditLogs.Add(disputeAudit);
+
         try
         {
             await _context.SaveChangesAsync();
@@ -2016,5 +3008,141 @@ public class AdminService : IAdminService
 
         var updatedDetail = await GetJobDetailAsync(jobId);
         return JobActionResult<AdminJobDetailDto>.Ok(updatedDetail!, $"Dispute for Job #{jobId} successfully resolved and recorded.");
+    }
+
+    public async Task<JobActionResult<SetAgreedLabourAmountResultDto>> SetAgreedLabourAmountAsync(
+        int jobId, 
+        SetAgreedLabourAmountDto dto, 
+        int adminUserId, 
+        CancellationToken cancellationToken = default)
+    {
+        if (dto == null)
+        {
+            return JobActionResult<SetAgreedLabourAmountResultDto>.Invalid("Request payload cannot be null.");
+        }
+
+        if (dto.AgreedLabourAmount <= 0)
+        {
+            return JobActionResult<SetAgreedLabourAmountResultDto>.Invalid("Agreed labour amount must be a positive value greater than zero.");
+        }
+
+        if (dto.AgreedLabourAmount > 10000000.00m)
+        {
+            return JobActionResult<SetAgreedLabourAmountResultDto>.Invalid("Agreed labour amount cannot exceed LKR 10,000,000.00.");
+        }
+
+        // Execute atomic database transaction with MariaDB row locking
+        using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        try
+        {
+            // Acquire exclusive row lock on the target job
+            var job = await _context.Jobs
+                .FromSqlInterpolated($"SELECT * FROM Jobs WHERE JobId = {jobId} FOR UPDATE")
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (job == null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return JobActionResult<SetAgreedLabourAmountResultDto>.NotFound($"Job #{jobId} was not found.");
+            }
+
+            // Concurrency check
+            if (dto.ExpectedConcurrencyVersion.HasValue && job.ConcurrencyVersion != dto.ExpectedConcurrencyVersion.Value)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return JobActionResult<SetAgreedLabourAmountResultDto>.Conflict(
+                    $"Concurrency conflict: Job #{jobId} has been modified (current version: {job.ConcurrencyVersion}, expected: {dto.ExpectedConcurrencyVersion.Value}). Please refresh and try again.");
+            }
+
+            // Lifecycle validation
+            if (job.Status == "Cancelled" || job.Status == "Completed" || job.Status == "Disputed")
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return JobActionResult<SetAgreedLabourAmountResultDto>.Invalid(
+                    $"Cannot set agreed labour amount: Job #{jobId} is in '{job.Status}' status.");
+            }
+
+            // Ensure electrician is assigned
+            if (job.ElectricianId == null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return JobActionResult<SetAgreedLabourAmountResultDto>.Invalid(
+                    $"Cannot set agreed labour amount: No electrician has been assigned to Job #{jobId}. Assign an electrician first.");
+            }
+
+            // Prevent modification if payment has already been recorded
+            var paymentExists = await _context.PaymentTransactions
+                .AnyAsync(pt => pt.JobId == jobId, cancellationToken);
+
+            if (paymentExists)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return JobActionResult<SetAgreedLabourAmountResultDto>.Invalid(
+                    $"Cannot modify agreed labour amount: Payment has already been recorded for Job #{jobId}. Financial amounts are immutable once paid.");
+            }
+
+            decimal? previousAmount = job.AgreedLabourAmount;
+            var nowUtc = DateTime.UtcNow;
+
+            // Update Job record
+            job.AgreedLabourAmount = dto.AgreedLabourAmount;
+            job.AgreedLabourAmountSetByAdminId = adminUserId;
+            job.AgreedLabourAmountSetAtUtc = nowUtc;
+            job.AgreedLabourNotes = dto.Notes?.Trim();
+            job.ConcurrencyVersion++;
+
+            // Create immutable audit log entry
+            var auditEntry = new JobAgreedLabourAudit
+            {
+                JobId = job.JobId,
+                PreviousAmount = previousAmount,
+                NewAmount = dto.AgreedLabourAmount,
+                AdminId = adminUserId,
+                ChangedAtUtc = nowUtc,
+                Notes = dto.Notes?.Trim()
+            };
+            _context.JobAgreedLabourAudits.Add(auditEntry);
+
+            var adminAudit = _auditService.CreateAuditEntry(
+                adminUserId: adminUserId,
+                actionType: "JobAgreedLabourSet",
+                entityType: "Job",
+                entityId: jobId.ToString(),
+                description: $"Set agreed labour amount for Job #{jobId} to LKR {dto.AgreedLabourAmount:N2}",
+                oldValues: previousAmount.HasValue ? System.Text.Json.JsonSerializer.Serialize(new { AgreedLabourAmount = previousAmount.Value }) : null,
+                newValues: System.Text.Json.JsonSerializer.Serialize(new { AgreedLabourAmount = dto.AgreedLabourAmount }),
+                reason: dto.Notes?.Trim());
+            _context.AdminAuditLogs.Add(adminAudit);
+
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            var resultDto = new SetAgreedLabourAmountResultDto
+            {
+                Success = true,
+                Message = previousAmount.HasValue
+                    ? $"Agreed labour amount for Job #{jobId} updated from LKR {previousAmount.Value:N2} to LKR {dto.AgreedLabourAmount:N2}."
+                    : $"Agreed labour amount for Job #{jobId} set to LKR {dto.AgreedLabourAmount:N2}.",
+                JobId = jobId,
+                AgreedLabourAmount = dto.AgreedLabourAmount,
+                PreviousAmount = previousAmount,
+                SetByAdminId = adminUserId,
+                SetAtUtc = nowUtc,
+                NewConcurrencyVersion = job.ConcurrencyVersion
+            };
+
+            return JobActionResult<SetAgreedLabourAmountResultDto>.Ok(resultDto, resultDto.Message);
+        }
+        catch
+        {
+            try
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
+            catch
+            {
+            }
+            throw;
+        }
     }
 }

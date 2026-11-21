@@ -43,4 +43,6 @@ public class User
     public ICollection<TechnicianAuditLog> AdminAuditActions { get; set; } = new List<TechnicianAuditLog>();
     public ICollection<EquipmentPriceHistory> PriceChangeActions { get; set; } = new List<EquipmentPriceHistory>();
     public ICollection<JobUsedEquipment> ReviewedEquipments { get; set; } = new List<JobUsedEquipment>();
+    public virtual ICollection<WalletTransaction> AdminInitiatedWalletTransactions { get; set; } = new List<WalletTransaction>();
+    public virtual ICollection<TechnicianPayoutRecord> AdminRecordedPayouts { get; set; } = new List<TechnicianPayoutRecord>();
 }

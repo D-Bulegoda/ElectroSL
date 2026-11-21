@@ -16,12 +16,17 @@ const AdminLayout = () => {
 
   const getSectionTitle = () => {
     const p = location.pathname;
-    if (p.includes('/admin/approvals')) return 'Pending Technician Approvals';
-    if (p.includes('/admin/applications/')) return 'Technician Application Dossier';
-    if (p.includes('/admin/approved')) return 'Approved Electricians Directory';
-    if (p.includes('/admin/rejected')) return 'Rejected Applications Archive';
-    if (p.includes('/admin/catalog')) return 'Equipment Price Control Catalog';
-    if (p.includes('/admin/equipment-claims')) return 'Flagged Equipment Claims Review';
+    if (p.includes('/admin/jobs')) return 'Job Operations & Dispatch';
+    if (p.includes('/admin/users')) return 'User Directory & Account Controls';
+    if (p.includes('/admin/technicians') || p.includes('/admin/approvals') || p.includes('/admin/approved') || p.includes('/admin/rejected') || p.includes('/admin/applications/')) {
+      return 'Technician Workforce & Accreditation';
+    }
+    if (p.includes('/admin/equipment') || p.includes('/admin/catalog') || p.includes('/admin/equipment-claims')) {
+      return 'Equipment Catalog & Price Claims';
+    }
+    if (p.includes('/admin/finance') || p.includes('/admin/financial')) return 'Financial Operations & Wallet Management';
+    if (p.includes('/admin/audit-logs')) return 'Administrative Audit Trail';
+    if (p.includes('/admin/reports')) return 'Administrative Reports & Data Export';
     return 'Operations Dashboard';
   };
 
