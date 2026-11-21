@@ -10,8 +10,8 @@ export const getAuthHeaders = () => {
 };
 
 export const fetchWithAuth = async (endpoint, options = {}) => {
-  const url = endpoint.startsWith('http') 
-    ? endpoint 
+  const url = endpoint.startsWith('http')
+    ? endpoint
     : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 
   const headers = {
@@ -58,8 +58,8 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
 };
 
 export const fetchBlobWithAuth = async (endpoint, options = {}) => {
-  const url = endpoint.startsWith('http') 
-    ? endpoint 
+  const url = endpoint.startsWith('http')
+    ? endpoint
     : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 
   const token = localStorage.getItem('token') || localStorage.getItem('jwt');
@@ -94,9 +94,9 @@ export const fetchBlobWithAuth = async (endpoint, options = {}) => {
   return { blob, contentType };
 };
 
-export const fetchJobs = async () => {
+export const fetchJobs = async (lat = 6.9271, lng = 79.8612) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/job/nearby?lat=6.9271&lng=79.8612`);
+    const response = await fetch(`${API_BASE_URL}/Job/nearby?lat=${lat}&lng=${lng}`);
     return await response.json();
   } catch (error) {
     console.error("Error fetching jobs:", error);

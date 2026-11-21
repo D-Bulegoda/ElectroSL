@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -7,13 +9,18 @@ namespace ElectroSL_Backend.Utilities;
 
 public static class JwtTokenGenerator
 {
+    public static string GenerateToken(int userId, string role, string secretKey)
+    {
+        return GenerateToken(userId, string.Empty, role, secretKey);
+    }
+
     public static string GenerateToken(
-        int userId, 
-        string email, 
-        string role, 
-        string secretKey, 
-        string issuer = "ElectroSL", 
-        string audience = "ElectroSL_Clients", 
+        int userId,
+        string email,
+        string role,
+        string secretKey,
+        string issuer = "ElectroSL",
+        string audience = "ElectroSL_Clients",
         int expiryMinutes = 120)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -37,7 +44,7 @@ public static class JwtTokenGenerator
             Issuer = issuer,
             Audience = audience,
             SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(key), 
+                new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha256Signature)
         };
 

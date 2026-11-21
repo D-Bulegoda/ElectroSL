@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using ElectroSL_Backend.Data;
 using ElectroSL_Backend.Models;
 using ElectroSL_Backend.Services.Interfaces;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ElectroSL_Backend.Controllers;
 
 [Route("api/[controller]")]
+[Route("api/ElectricianProfile")]
 [ApiController]
 public class ElectricianController : ControllerBase
 {
@@ -52,6 +54,28 @@ public class ElectricianController : ControllerBase
         });
     }
 
+    [HttpGet("status/{id}")]
+    public async Task<IActionResult> GetCertificateStatus(int id)
+    {
+        var profile = await _context.ElectricianProfiles
+            .FirstOrDefaultAsync(p => p.UserId == id || p.ProfileId == id);
+
+        if (profile == null)
+        {
+            return Ok(new
+            {
+                hasUploadedCertificates = false,
+                verificationStatus = "None"
+            });
+        }
+
+        return Ok(new
+        {
+            hasUploadedCertificates = !string.IsNullOrWhiteSpace(profile.NvqCertificateUrl) && !string.IsNullOrWhiteSpace(profile.NicDocumentUrl),
+            verificationStatus = profile.VerificationStatus
+        });
+    }
+
     [HttpPost("{id}/documents")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadDocuments(
@@ -86,7 +110,6 @@ public class ElectricianController : ControllerBase
                 profile.NvqCertificateUrl = nvqFileName;
             }
 
-            // If the application was previously rejected, uploading new documents resets status to Pending for admin re-evaluation
             if (profile.VerificationStatus == "Rejected")
             {
                 profile.VerificationStatus = "Pending";
@@ -124,8 +147,6 @@ public class ElectricianController : ControllerBase
             return NotFound(new { message = $"Electrician profile not found for ID {id}." });
         }
 
-        // Revocation / Approval enforcement:
-        // A technician cannot go online if revoked, rejected, or still pending
         if (isOnline && (profile.VerificationStatus != "Approved" || !profile.IsApprovedByAdmin))
         {
             return BadRequest(new
@@ -138,7 +159,6 @@ public class ElectricianController : ControllerBase
             });
         }
 
-        // Account status enforcement: Inactive or suspended electricians cannot go online
         var electricianUser = await _context.Users.FirstOrDefaultAsync(u => u.UserId == profile.UserId);
         if (isOnline && (electricianUser == null || !electricianUser.IsActive || electricianUser.AccountStatus != "Active"))
         {
@@ -152,8 +172,8 @@ public class ElectricianController : ControllerBase
         profile.IsOnline = isOnline;
         await _context.SaveChangesAsync();
 
-        return Ok(new 
-        { 
+        return Ok(new
+        {
             message = $"Electrician {id} is now {(isOnline ? "Online" : "Offline")}",
             isOnline = profile.IsOnline,
             verificationStatus = profile.VerificationStatus

@@ -1,5 +1,8 @@
+using System;
 using System.Text;
 using ElectroSL_Backend.Data;
+using ElectroSL_Backend.Hubs;
+using ElectroSL_Backend.Services;
 using ElectroSL_Backend.Services.Implementations;
 using ElectroSL_Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -61,7 +64,7 @@ builder.Services.AddDbContext<ElectroSLDbContext>(options =>
     ));
 
 // 4. JWT Authentication
-var jwtSecretKey = builder.Configuration["JwtSettings:SecretKey"] 
+var jwtSecretKey = builder.Configuration["JwtSettings:SecretKey"]
     ?? "ElectroSL_Super_Secret_Key_At_Least_32_Characters_Long_For_Jwt_Security!";
 var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "ElectroSL";
 var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "ElectroSL_Clients";
@@ -90,7 +93,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// 5. Scoped application services
+// 5. Scoped application services & SignalR
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IDocumentStorageService, DocumentStorageService>();
@@ -99,6 +102,9 @@ builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<IMediaStorageService, LocalMediaStorageService>();
 builder.Services.AddScoped<DistanceCalculationService>();
 builder.Services.AddScoped<WalletService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
+builder.Services.AddSignalR();
 
 // 6. CORS policy
 builder.Services.AddCors(options =>
@@ -120,6 +126,10 @@ if (app.Environment.IsDevelopment())
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "ElectroSL API v1");
     });
+}
+else
+{
+    app.UseHttpsRedirection();
 }
 
 app.UseCors("AllowFrontend");
@@ -150,30 +160,3 @@ app.Use(async (context, next) =>
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 context.Response.ContentType = "application/json";
                 var status = accountInfo.AccountStatus ?? "Inactive";
-                var reason = !string.IsNullOrWhiteSpace(accountInfo.SuspensionReason)
-                    ? accountInfo.SuspensionReason
-                    : "Your account is not active. Please contact customer support.";
-
-                var payload = System.Text.Json.JsonSerializer.Serialize(new
-                {
-                    message = $"Access denied. Your account is {status.ToLowerInvariant()}. {reason}",
-                    accountStatus = status,
-                    suspensionReason = accountInfo.SuspensionReason
-                });
-                await context.Response.WriteAsync(payload);
-                return;
-            }
-        }
-    }
-
-    await next();
-});
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-// 8. Safe Admin Seeding check at application startup
-await DbInitializer.SeedAdminAsync(app.Services, builder.Configuration);
-
-app.Run();

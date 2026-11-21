@@ -19,6 +19,7 @@ public class ElectroSLDbContext : DbContext
     public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
     public DbSet<Review> Reviews { get; set; }
     public DbSet<TechnicianAuditLog> TechnicianAuditLogs { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
