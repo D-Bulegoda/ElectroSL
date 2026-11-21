@@ -1,26 +1,88 @@
+
+using ElectroSL_Backend.Data;
 using ElectroSL_Backend.Models;
 using ElectroSL_Backend.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectroSL_Backend.Services.Implementations;
 
 public class MatchingService : IMatchingService
 {
-    private readonly DistanceCalculationService _distanceService;
+    private readonly ElectroSLDbContext _context;
 
-    public MatchingService(DistanceCalculationService distanceService)
+    public MatchingService(ElectroSLDbContext context)
     {
-        _distanceService = distanceService;
+        _context = context;
     }
 
-    public async Task<List<ElectricianProfile>> FindNearbyElectriciansAsync(double lat, double lng, double radiusKm = 10.0)
+    public async Task<List<ElectricianProfile>> FindNearbyElectriciansAsync(
+        double lat,
+        double lng,
+        double radiusKm = 10.0)
     {
-        // Placeholder: Fetch online electricians from DB and filter using _distanceService
-        return await Task.FromResult(new List<ElectricianProfile>());
+        var electricians = await _context.ElectricianProfiles
+            .Where(e => e.IsOnline && e.IsApprovedByAdmin)
+            .ToListAsync();
+
+        var nearbyElectricians = electricians
+            .Where(e =>
+                CalculateDistanceInKm(
+                    lat,
+                    lng,
+                    e.CurrentLat,
+                    e.CurrentLng
+                ) <= radiusKm)
+            .ToList();
+
+        return nearbyElectricians;
     }
 
-    public async Task<List<ElectricianProfile>> FindTopRatedIslandWideAsync(double minimumRating = 4.5)
+        
+    public async Task<List<ElectricianProfile>> FindTopRatedIslandWideAsync(
+        double minimumRating = 4.5)
     {
-        // Placeholder: Return electricians with Rating >= minimumRating for New Construction bidding
-        return await Task.FromResult(new List<ElectricianProfile>());
+        // Find electricians whose average customer rating meets the minimum.
+        var qualifiedElectricianIds = await _context.Reviews
+            .GroupBy(r => r.ElectricianId)
+            .Where(g => g.Average(r => r.Rating) >= (decimal)minimumRating)
+            .Select(g => g.Key)
+            .ToListAsync();
+
+        // Return their approved electrician profiles.
+        var topRatedElectricians = await _context.ElectricianProfiles
+            .Where(e =>
+                e.IsApprovedByAdmin &&
+                qualifiedElectricianIds.Contains(e.UserId))
+            .ToListAsync();
+
+        return topRatedElectricians;
+    }
+
+
+    private static double CalculateDistanceInKm(
+        double lat1,
+        double lng1,
+        double lat2,
+        double lng2)
+    {
+        const double earthRadiusKm = 6371.0;
+
+        double dLat = ToRadians(lat2 - lat1);
+        double dLng = ToRadians(lng2 - lng1);
+
+        double a =
+            Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+            Math.Cos(ToRadians(lat1)) *
+            Math.Cos(ToRadians(lat2)) *
+            Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
+
+        double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+        return earthRadiusKm * c;
+    }
+
+    private static double ToRadians(double degrees)
+    {
+        return degrees * Math.PI / 180.0;
     }
 }

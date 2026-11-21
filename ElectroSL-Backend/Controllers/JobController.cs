@@ -1,3 +1,6 @@
+
+using ElectroSL_Backend.DTOs.Job;
+using ElectroSL_Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ElectroSL_Backend.Controllers;
@@ -6,16 +9,71 @@ namespace ElectroSL_Backend.Controllers;
 [ApiController]
 public class JobController : ControllerBase
 {
-    [HttpPost("create")]
-    public IActionResult CreateJob([FromBody] DTOs.Job.CreateJobDto request)
+    private readonly IJobService _jobService;
+
+    public JobController(IJobService jobService)
     {
-        return Ok(new { message = "Job created. 10km Dispatch logic runs here." });
+        _jobService = jobService;
+    }
+
+    [HttpPost("create")]
+    public async Task<IActionResult> CreateJob(
+        [FromBody] CreateJobDto request)
+    {
+        try
+        {
+            var job = await _jobService.CreateJobAsync(request);
+
+            return Ok(new
+            {
+                message = "Job created successfully.",
+                job
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("{jobId:int}/matching-electricians")]
+    public async Task<IActionResult> GetMatchingElectricians(int jobId)
+    {
+        try
+        {
+            var electricians =
+                await _jobService.FindMatchingElectriciansForJobAsync(jobId);
+
+            return Ok(new
+            {
+                jobId,
+                count = electricians.Count,
+                electricians
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("nearby")]
-    public IActionResult GetNearbyJobs([FromQuery] double lat, [FromQuery] double lng)
+    public IActionResult GetNearbyJobs(
+        [FromQuery] double lat,
+        [FromQuery] double lng)
     {
-        // Haversine formula logic goes here to find jobs within 10km
-        return Ok(new { message = "Returning jobs within 10km radius" });
+        // Nearby job listing logic will be implemented separately.
+        return Ok(new
+        {
+            message = "Nearby job listing is not implemented yet."
+        });
     }
 }

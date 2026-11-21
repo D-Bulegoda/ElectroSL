@@ -22,6 +22,7 @@ builder.Services.AddScoped<IMatchingService, MatchingService>();
 builder.Services.AddScoped<IMediaStorageService, LocalMediaStorageService>();
 builder.Services.AddScoped<DistanceCalculationService>();
 builder.Services.AddScoped<WalletService>();
+builder.Services.AddHostedService<MaintenanceJobExpiryService>();
 
 
 builder.Services.AddCors(options =>
