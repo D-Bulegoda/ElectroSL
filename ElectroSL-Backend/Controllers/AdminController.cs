@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using System.Text;
 using ElectroSL_Backend.DTOs.Admin;
+using ElectroSL_Backend.Services.Implementations;
 using ElectroSL_Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,11 +15,19 @@ public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
     private readonly IDocumentStorageService _documentStorageService;
+    private readonly IAdminFinancialService _financialService;
+    private readonly IAdminAuditService _auditService;
 
-    public AdminController(IAdminService adminService, IDocumentStorageService documentStorageService)
+    public AdminController(
+        IAdminService adminService, 
+        IDocumentStorageService documentStorageService,
+        IAdminFinancialService financialService,
+        IAdminAuditService auditService)
     {
         _adminService = adminService;
         _documentStorageService = documentStorageService;
+        _financialService = financialService;
+        _auditService = auditService;
     }
 
     private int GetCurrentAdminUserId()
@@ -179,6 +189,28 @@ public class AdminController : ControllerBase
         return Ok(stats);
     }
 
+    [HttpGet("dashboard-analytics")]
+    public async Task<IActionResult> GetDashboardAnalytics([FromQuery] string? range = "30d", [FromQuery] DateTime? customFrom = null, [FromQuery] DateTime? customTo = null)
+    {
+        if (customFrom.HasValue && customTo.HasValue && customFrom.Value > customTo.Value)
+        {
+            return BadRequest(new { message = "Invalid date range: 'customFrom' cannot be later than 'customTo'." });
+        }
+        var analytics = await _adminService.GetDashboardAnalyticsAsync(range, customFrom, customTo);
+        return Ok(analytics);
+    }
+
+    [HttpGet("advanced-analytics")]
+    public async Task<IActionResult> GetAdvancedAnalytics([FromQuery] string? range = "30d", [FromQuery] DateTime? customFrom = null, [FromQuery] DateTime? customTo = null)
+    {
+        if (customFrom.HasValue && customTo.HasValue && customFrom.Value > customTo.Value)
+        {
+            return BadRequest(new { message = "Invalid date range: 'customFrom' cannot be later than 'customTo'." });
+        }
+        var bi = await _adminService.GetAdvancedAnalyticsAsync(range, customFrom, customTo);
+        return Ok(bi);
+    }
+
     [HttpGet("catalog")]
     public async Task<IActionResult> GetCatalog([FromQuery] string? category, [FromQuery] string? search, [FromQuery] bool? isActive)
     {
@@ -218,7 +250,8 @@ public class AdminController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var result = await _adminService.CreateCatalogItemAsync(dto);
+        var adminUserId = GetCurrentAdminUserId();
+        var result = await _adminService.CreateCatalogItemAsync(dto, adminUserId);
         return result.Status switch
         {
             CatalogResultStatus.Invalid => BadRequest(new { message = result.Message }),
@@ -500,6 +533,19 @@ public class AdminController : ControllerBase
         return MapJobActionResult(result);
     }
 
+    [HttpPut("jobs/{jobId}/agreed-labour")]
+    public async Task<IActionResult> SetAgreedLabourAmount(int jobId, [FromBody] SetAgreedLabourAmountDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var adminUserId = GetCurrentAdminUserId();
+        var result = await _adminService.SetAgreedLabourAmountAsync(jobId, dto, adminUserId);
+        return MapJobActionResult(result);
+    }
+
     private IActionResult MapJobActionResult<T>(JobActionResult<T> result)
     {
         return result.Status switch
@@ -510,5 +556,257 @@ public class AdminController : ControllerBase
             JobActionStatus.Success => Ok(new { message = result.Message, data = result.Data }),
             _ => BadRequest(new { message = result.Message })
         };
+    }
+
+    // =========================================================================
+    // Financial & Wallet Operations Management (Phase 3 Task 3.4.5)
+    // =========================================================================
+
+    [HttpGet("financial/summary")]
+    public async Task<IActionResult> GetFinancialSummary()
+    {
+        var summary = await _financialService.GetFinancialSummaryAsync();
+        return Ok(summary);
+    }
+
+    [HttpGet("financial/transactions")]
+    public async Task<IActionResult> GetFinancialTransactions([FromQuery] FinancialLedgerFilterDto filter)
+    {
+        var result = await _financialService.GetTransactionsAsync(filter);
+        return Ok(result);
+    }
+
+    [HttpGet("financial/technicians/{profileId}/wallet")]
+    public async Task<IActionResult> GetTechnicianWallet(int profileId)
+    {
+        var detail = await _financialService.GetTechnicianWalletAsync(profileId);
+        if (detail == null)
+        {
+            return NotFound(new { message = $"Technician profile #{profileId} was not found." });
+        }
+        return Ok(detail);
+    }
+
+    [HttpPost("financial/payouts")]
+    public async Task<IActionResult> RecordPayout([FromBody] RecordPayoutRequestDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var adminUserId = GetCurrentAdminUserId();
+        var result = await _financialService.RecordPayoutAsync(dto, adminUserId);
+
+        if (!result.Success)
+        {
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(result);
+    }
+
+    [HttpPost("financial/payouts/{payoutId}/reverse")]
+    public async Task<IActionResult> ReversePayout(int payoutId, [FromBody] ReversePayoutRequestDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var adminUserId = GetCurrentAdminUserId();
+        var result = await _financialService.ReversePayoutAsync(payoutId, dto, adminUserId);
+
+        if (!result.Success)
+        {
+            if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = result.Message });
+            }
+            if (result.Message.Contains("already been reversed", StringComparison.OrdinalIgnoreCase))
+            {
+                return Conflict(new { message = result.Message });
+            }
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(result);
+    }
+
+    [HttpPost("financial/technicians/{profileId}/adjust")]
+    public async Task<IActionResult> AdjustWallet(int profileId, [FromBody] WalletAdjustmentRequestDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var adminUserId = GetCurrentAdminUserId();
+        var result = await _financialService.AdjustWalletAsync(profileId, dto, adminUserId);
+
+        if (!result.Success)
+        {
+            if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = result.Message });
+            }
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(result);
+    }
+
+    // =========================================================================
+    // Unified Administrative Audit Logging (Task 3.5)
+    // =========================================================================
+
+    [HttpGet("audit-logs")]
+    public async Task<IActionResult> GetAuditLogs([FromQuery] AdminAuditLogFilterDto filter)
+    {
+        var result = await _auditService.GetAuditLogsAsync(filter);
+        return Ok(result);
+    }
+
+    [HttpGet("audit-logs/{id}")]
+    public async Task<IActionResult> GetAuditLogDetail(long id)
+    {
+        var detail = await _auditService.GetAuditLogDetailAsync(id);
+        if (detail == null)
+        {
+            return NotFound(new { message = $"Administrative audit log entry #{id} was not found." });
+        }
+        return Ok(detail);
+    }
+
+    // =========================================================================
+    // Reporting & Data Export (Phase 4 Task 4.1)
+    // =========================================================================
+
+    [HttpGet("reports/export")]
+    public async Task<IActionResult> ExportReport(
+        [FromQuery] string reportType = "financial", 
+        [FromQuery] string range = "30d",
+        [FromQuery] string format = "csv",
+        [FromQuery] DateTime? customFrom = null,
+        [FromQuery] DateTime? customTo = null)
+    {
+        // 1. Format validation
+        string fmt = string.IsNullOrWhiteSpace(format) ? "csv" : format.Trim().ToLowerInvariant();
+        if (fmt != "csv" && fmt != "xlsx" && fmt != "pdf")
+        {
+            return BadRequest(new { message = $"Unsupported export format '{format}'. Supported formats: csv, xlsx, pdf." });
+        }
+
+        // 2. Report type validation
+        string type = string.IsNullOrWhiteSpace(reportType) ? "financial" : reportType.Trim().ToLowerInvariant();
+        if (type == "activity") type = "audits";
+        if (type != "financial" && type != "jobs" && type != "technicians" && type != "equipment" && type != "audits")
+        {
+            return BadRequest(new { message = $"Unsupported report type '{reportType}'. Supported: financial, jobs, technicians, equipment, audits." });
+        }
+
+        // 3. Date range validation
+        if (customFrom.HasValue && customTo.HasValue && customFrom.Value > customTo.Value)
+        {
+            return BadRequest(new { message = "Invalid date range: 'customFrom' cannot be later than 'customTo'." });
+        }
+        if (range.Equals("custom", StringComparison.OrdinalIgnoreCase) && !customFrom.HasValue && !customTo.HasValue)
+        {
+            return BadRequest(new { message = "Custom date range requires at least 'customFrom' or 'customTo'." });
+        }
+
+        string rangeLabel = ReportExportGenerator.GetRangeLabel(range, customFrom, customTo);
+        string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+        string filename = $"ElectroSL_{type}_Report_{timestamp}.{fmt}";
+
+        byte[] fileBytes;
+        string contentType;
+
+        switch (type)
+        {
+            case "financial":
+            {
+                var analytics = await _adminService.GetDashboardAnalyticsAsync(range, customFrom, customTo);
+                fileBytes = fmt switch
+                {
+                    "xlsx" => ReportExportGenerator.GenerateFinancialXlsx(analytics, rangeLabel),
+                    "pdf" => ReportExportGenerator.GenerateFinancialPdf(analytics, rangeLabel),
+                    _ => ReportExportGenerator.GenerateFinancialCsv(analytics, rangeLabel)
+                };
+                break;
+            }
+            case "jobs":
+            {
+                var analytics = await _adminService.GetDashboardAnalyticsAsync(range, customFrom, customTo);
+                fileBytes = fmt switch
+                {
+                    "xlsx" => ReportExportGenerator.GenerateJobsXlsx(analytics, rangeLabel),
+                    "pdf" => ReportExportGenerator.GenerateJobsPdf(analytics, rangeLabel),
+                    _ => ReportExportGenerator.GenerateJobsCsv(analytics, rangeLabel)
+                };
+                break;
+            }
+            case "technicians":
+            {
+                var analytics = await _adminService.GetDashboardAnalyticsAsync(range, customFrom, customTo);
+                fileBytes = fmt switch
+                {
+                    "xlsx" => ReportExportGenerator.GenerateTechniciansXlsx(analytics, rangeLabel),
+                    "pdf" => ReportExportGenerator.GenerateTechniciansPdf(analytics, rangeLabel),
+                    _ => ReportExportGenerator.GenerateTechniciansCsv(analytics, rangeLabel)
+                };
+                break;
+            }
+            case "equipment":
+            {
+                var catalog = await _adminService.GetAllCatalogItemsAsync(null, null, null);
+                var claims = await _adminService.GetEquipmentClaimsAsync(null, null, null);
+                fileBytes = fmt switch
+                {
+                    "xlsx" => ReportExportGenerator.GenerateEquipmentXlsx(catalog, claims),
+                    "pdf" => ReportExportGenerator.GenerateEquipmentPdf(catalog, claims),
+                    _ => ReportExportGenerator.GenerateEquipmentCsv(catalog, claims)
+                };
+                break;
+            }
+            case "audits":
+            {
+                DateTime? startDate = customFrom;
+                DateTime? endDate = customTo;
+                if (!customFrom.HasValue && !customTo.HasValue && range != "all")
+                {
+                    var analytics = await _adminService.GetDashboardAnalyticsAsync(range);
+                    startDate = analytics.FromDateUtc;
+                    endDate = analytics.ToDateUtc;
+                }
+
+                var auditLogResult = await _auditService.GetAuditLogsAsync(new AdminAuditLogFilterDto 
+                { 
+                    Page = 1, 
+                    PageSize = 200,
+                    StartDateUtc = startDate,
+                    EndDateUtc = endDate
+                });
+
+                fileBytes = fmt switch
+                {
+                    "xlsx" => ReportExportGenerator.GenerateAuditsXlsx(auditLogResult.Items, rangeLabel),
+                    "pdf" => ReportExportGenerator.GenerateAuditsPdf(auditLogResult.Items, rangeLabel),
+                    _ => ReportExportGenerator.GenerateAuditsCsv(auditLogResult.Items, rangeLabel)
+                };
+                break;
+            }
+            default:
+                return BadRequest(new { message = $"Unsupported report type '{reportType}'." });
+        }
+
+        contentType = fmt switch
+        {
+            "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "pdf" => "application/pdf",
+            _ => "text/csv; charset=utf-8"
+        };
+
+        return File(fileBytes, contentType, filename);
     }
 }

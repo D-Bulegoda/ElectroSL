@@ -312,3 +312,40 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
+/* --------------------------------------------------------------------------
+   Print & PDF Export Styling
+   -------------------------------------------------------------------------- */
+@media print {
+  aside,
+  header,
+  .no-print,
+  .admin-page-header button,
+  .admin-sidebar {
+    display: none !important;
+  }
+
+  body,
+  .admin-workspace-root {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .admin-card {
+    border: 1px solid #cccccc !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    margin-bottom: 1rem !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
+
+.print-only {
+  display: none;
+}
+
+

@@ -37,14 +37,13 @@ import CircuitSimulator from '../pages/Electrician/CircuitSimulator';
 // Admin pages
 import AdminLayout from '../pages/Admin/AdminLayout';
 import AdminDashboard from '../pages/Admin/AdminDashboard';
-import TechnicianApprovals from '../pages/Admin/TechnicianApprovals';
-import ApplicationDetail from '../pages/Admin/ApplicationDetail';
-import ApprovedElectricians from '../pages/Admin/ApprovedElectricians';
-import RejectedApplications from '../pages/Admin/RejectedApplications';
-import EquipmentPriceCatalog from '../pages/Admin/EquipmentPriceCatalog';
-import FlaggedEquipmentClaims from '../pages/Admin/FlaggedEquipmentClaims';
+import TechnicianManagement from '../pages/Admin/TechnicianManagement';
+import EquipmentManagement from '../pages/Admin/EquipmentManagement';
 import UserManagement from '../pages/Admin/UserManagement';
 import AdminJobManagement from '../pages/Admin/AdminJobManagement';
+import AdminFinancialManagement from '../pages/Admin/AdminFinancialManagement';
+import AdminAuditLogs from '../pages/Admin/AdminAuditLogs';
+import AdminReports from '../pages/Admin/AdminReports';
 
 // Payment & Notification Components
 import MockPaymentGateway from '../components/payments/MockPaymentGateway';
@@ -65,14 +64,28 @@ function AppRoutes() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="users" element={<UserManagement />} />
             <Route path="jobs" element={<AdminJobManagement />} />
-            <Route path="approvals" element={<TechnicianApprovals />} />
-            <Route path="applications/:id" element={<ApplicationDetail />} />
-            <Route path="approved" element={<ApprovedElectricians />} />
-            <Route path="rejected" element={<RejectedApplications />} />
-            <Route path="catalog" element={<EquipmentPriceCatalog />} />
-            <Route path="equipment-claims" element={<FlaggedEquipmentClaims />} />
+            <Route path="users" element={<UserManagement />} />
+            
+            {/* Unified Technician Management & Backward Compatible Aliases */}
+            <Route path="technicians" element={<TechnicianManagement />} />
+            <Route path="approvals" element={<TechnicianManagement defaultTab="pending" />} />
+            <Route path="approved" element={<TechnicianManagement defaultTab="approved" />} />
+            <Route path="rejected" element={<TechnicianManagement defaultTab="rejected" />} />
+            <Route path="applications/:id" element={<TechnicianManagement />} />
+
+            {/* Unified Equipment Management & Backward Compatible Aliases */}
+            <Route path="equipment" element={<EquipmentManagement />} />
+            <Route path="catalog" element={<EquipmentManagement defaultTab="catalog" />} />
+            <Route path="equipment-claims" element={<EquipmentManagement defaultTab="claims" />} />
+
+            {/* Financial Management */}
+            <Route path="finance" element={<AdminFinancialManagement />} />
+            <Route path="financial" element={<AdminFinancialManagement />} />
+
+            {/* Reports & Administration */}
+            <Route path="reports" element={<AdminReports />} />
+            <Route path="audit-logs" element={<AdminAuditLogs />} />
           </Route>
         </Route>
 

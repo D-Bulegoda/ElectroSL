@@ -22,6 +22,67 @@ namespace ElectroSL_Backend.Migrations
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
+            modelBuilder.Entity("ElectroSL_Backend.Models.AdminAuditLog", b =>
+                {
+                    b.Property<long>("AuditLogId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("AuditLogId"));
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("AdminUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("NewValues")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("OldValues")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.HasKey("AuditLogId");
+
+                    b.HasIndex("ActionType");
+
+                    b.HasIndex("AdminUserId");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("AdminAuditLogs");
+                });
+
             modelBuilder.Entity("ElectroSL_Backend.Models.ElectricianProfile", b =>
                 {
                     b.Property<int>("ProfileId")
@@ -218,6 +279,20 @@ namespace ElectroSL_Backend.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("JobId"));
 
+                    b.Property<decimal?>("AgreedLabourAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("AgreedLabourAmountSetAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("AgreedLabourAmountSetByAdminId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AgreedLabourNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
                     b.Property<DateTime?>("AssignedAt")
                         .HasColumnType("datetime(6)");
 
@@ -302,6 +377,8 @@ namespace ElectroSL_Backend.Migrations
 
                     b.HasKey("JobId");
 
+                    b.HasIndex("AgreedLabourAmountSetByAdminId");
+
                     b.HasIndex("AssignedByAdminId");
 
                     b.HasIndex("CancelledByUserId");
@@ -317,6 +394,46 @@ namespace ElectroSL_Backend.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("Jobs");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.JobAgreedLabourAudit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AdminId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ChangedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("JobId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("NewAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<decimal?>("PreviousAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdminId");
+
+                    b.HasIndex("ChangedAtUtc");
+
+                    b.HasIndex("JobId");
+
+                    b.ToTable("JobAgreedLabourAudits");
                 });
 
             modelBuilder.Entity("ElectroSL_Backend.Models.JobBid", b =>
@@ -620,6 +737,58 @@ namespace ElectroSL_Backend.Migrations
                     b.ToTable("TechnicianAuditLogs");
                 });
 
+            modelBuilder.Entity("ElectroSL_Backend.Models.TechnicianPayoutRecord", b =>
+                {
+                    b.Property<int>("PayoutId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("PayoutId"));
+
+                    b.Property<string>("AccountNumberMasked")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<string>("AdminNotes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("BankName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("BankTransferReference")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("DisbursedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ElectricianProfileId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecordedByAdminId")
+                        .HasColumnType("int");
+
+                    b.HasKey("PayoutId");
+
+                    b.HasIndex("DisbursedAtUtc");
+
+                    b.HasIndex("ElectricianProfileId");
+
+                    b.HasIndex("RecordedByAdminId");
+
+                    b.ToTable("TechnicianPayoutRecords");
+                });
+
             modelBuilder.Entity("ElectroSL_Backend.Models.User", b =>
                 {
                     b.Property<int>("UserId")
@@ -707,6 +876,89 @@ namespace ElectroSL_Backend.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("ElectroSL_Backend.Models.WalletTransaction", b =>
+                {
+                    b.Property<long>("TransactionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("TransactionId"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("BalanceBefore")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("ElectricianProfileId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExternalReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int?>("InitiatedByAdminId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("JobId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PaymentTransactionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PayoutRecordId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TransactionType")
+                        .HasColumnType("int");
+
+                    b.HasKey("TransactionId");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("ElectricianProfileId");
+
+                    b.HasIndex("InitiatedByAdminId");
+
+                    b.HasIndex("JobId");
+
+                    b.HasIndex("PaymentTransactionId");
+
+                    b.HasIndex("PayoutRecordId");
+
+                    b.HasIndex("TransactionType");
+
+                    b.HasIndex("PaymentTransactionId", "TransactionType")
+                        .IsUnique();
+
+                    b.ToTable("WalletTransactions");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.AdminAuditLog", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.User", "AdminUser")
+                        .WithMany()
+                        .HasForeignKey("AdminUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AdminUser");
+                });
+
             modelBuilder.Entity("ElectroSL_Backend.Models.ElectricianProfile", b =>
                 {
                     b.HasOne("ElectroSL_Backend.Models.User", "User")
@@ -739,6 +991,11 @@ namespace ElectroSL_Backend.Migrations
 
             modelBuilder.Entity("ElectroSL_Backend.Models.Job", b =>
                 {
+                    b.HasOne("ElectroSL_Backend.Models.User", "AgreedLabourAmountSetByAdmin")
+                        .WithMany()
+                        .HasForeignKey("AgreedLabourAmountSetByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ElectroSL_Backend.Models.User", "AssignedByAdmin")
                         .WithMany()
                         .HasForeignKey("AssignedByAdminId")
@@ -760,6 +1017,8 @@ namespace ElectroSL_Backend.Migrations
                         .HasForeignKey("ElectricianId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("AgreedLabourAmountSetByAdmin");
+
                     b.Navigation("AssignedByAdmin");
 
                     b.Navigation("CancelledByUser");
@@ -767,6 +1026,25 @@ namespace ElectroSL_Backend.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("Electrician");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.JobAgreedLabourAudit", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.User", "Admin")
+                        .WithMany()
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ElectroSL_Backend.Models.Job", "Job")
+                        .WithMany("AgreedLabourAudits")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
+
+                    b.Navigation("Job");
                 });
 
             modelBuilder.Entity("ElectroSL_Backend.Models.JobBid", b =>
@@ -884,9 +1162,71 @@ namespace ElectroSL_Backend.Migrations
                     b.Navigation("ElectricianProfile");
                 });
 
+            modelBuilder.Entity("ElectroSL_Backend.Models.TechnicianPayoutRecord", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.ElectricianProfile", "ElectricianProfile")
+                        .WithMany("PayoutRecords")
+                        .HasForeignKey("ElectricianProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ElectroSL_Backend.Models.User", "RecordedByAdmin")
+                        .WithMany("AdminRecordedPayouts")
+                        .HasForeignKey("RecordedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ElectricianProfile");
+
+                    b.Navigation("RecordedByAdmin");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.WalletTransaction", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.ElectricianProfile", "ElectricianProfile")
+                        .WithMany("WalletTransactions")
+                        .HasForeignKey("ElectricianProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ElectroSL_Backend.Models.User", "InitiatedByAdmin")
+                        .WithMany("AdminInitiatedWalletTransactions")
+                        .HasForeignKey("InitiatedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ElectroSL_Backend.Models.Job", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ElectroSL_Backend.Models.PaymentTransaction", "PaymentTransaction")
+                        .WithMany("WalletTransactions")
+                        .HasForeignKey("PaymentTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ElectroSL_Backend.Models.TechnicianPayoutRecord", "PayoutRecord")
+                        .WithMany("WalletTransactions")
+                        .HasForeignKey("PayoutRecordId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ElectricianProfile");
+
+                    b.Navigation("InitiatedByAdmin");
+
+                    b.Navigation("Job");
+
+                    b.Navigation("PaymentTransaction");
+
+                    b.Navigation("PayoutRecord");
+                });
+
             modelBuilder.Entity("ElectroSL_Backend.Models.ElectricianProfile", b =>
                 {
                     b.Navigation("AuditLogs");
+
+                    b.Navigation("PayoutRecords");
+
+                    b.Navigation("WalletTransactions");
                 });
 
             modelBuilder.Entity("ElectroSL_Backend.Models.EquipmentCatalog", b =>
@@ -898,6 +1238,8 @@ namespace ElectroSL_Backend.Migrations
 
             modelBuilder.Entity("ElectroSL_Backend.Models.Job", b =>
                 {
+                    b.Navigation("AgreedLabourAudits");
+
                     b.Navigation("JobBids");
 
                     b.Navigation("JobUsedEquipments");
@@ -907,9 +1249,23 @@ namespace ElectroSL_Backend.Migrations
                     b.Navigation("Review");
                 });
 
+            modelBuilder.Entity("ElectroSL_Backend.Models.PaymentTransaction", b =>
+                {
+                    b.Navigation("WalletTransactions");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.TechnicianPayoutRecord", b =>
+                {
+                    b.Navigation("WalletTransactions");
+                });
+
             modelBuilder.Entity("ElectroSL_Backend.Models.User", b =>
                 {
                     b.Navigation("AdminAuditActions");
+
+                    b.Navigation("AdminInitiatedWalletTransactions");
+
+                    b.Navigation("AdminRecordedPayouts");
 
                     b.Navigation("AssignedJobs");
 

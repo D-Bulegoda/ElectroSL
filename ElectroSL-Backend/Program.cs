@@ -123,6 +123,8 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // 5. Scoped application services and SignalR
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAdminAuditService, AdminAuditService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IDocumentStorageService,
@@ -133,6 +135,8 @@ builder.Services.AddScoped<IMediaStorageService,
     LocalMediaStorageService>();
 builder.Services.AddScoped<DistanceCalculationService>();
 builder.Services.AddScoped<WalletService>();
+builder.Services.AddScoped<IAdminFinancialService, AdminFinancialService>();
+builder.Services.AddScoped<IPaymentProcessingService, PaymentProcessingService>();
 builder.Services.AddScoped<INotificationService,
     NotificationService>();
 

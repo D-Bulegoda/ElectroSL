@@ -31,4 +31,6 @@ public class ElectricianProfile
     // Navigation Property
     public User User { get; set; } = null!;
     public ICollection<TechnicianAuditLog> AuditLogs { get; set; } = new List<TechnicianAuditLog>();
+    public virtual ICollection<WalletTransaction> WalletTransactions { get; set; } = new List<WalletTransaction>();
+    public virtual ICollection<TechnicianPayoutRecord> PayoutRecords { get; set; } = new List<TechnicianPayoutRecord>();
 }

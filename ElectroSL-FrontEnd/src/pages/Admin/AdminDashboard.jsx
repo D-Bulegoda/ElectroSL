@@ -1,32 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import StatsCard from '../../components/admin/StatsCard';
-import StatusBadge from '../../components/admin/StatusBadge';
 import adminService from '../../services/adminService';
-import { formatCurrency, formatDateTime } from '../../utils/formattingHelpers';
+import { formatDateTime } from '../../utils/formattingHelpers';
+import { MonthlyJobActivityLineChart } from '../../components/admin/AdminCharts';
 import {
-  ClipboardCheckIcon,
+  BriefcaseIcon,
   UsersCheckIcon,
-  UserXIcon,
+  ClipboardCheckIcon,
   TagIcon,
+  CreditCardIcon,
+  FileTextIcon,
+  AlertTriangleIcon,
   RefreshCwIcon,
-  ArrowLeftIcon,
+  ArrowRightIcon,
   CheckIcon,
-  ShieldAlertIcon
+  ClockIcon
 } from '../../components/admin/AdminIcons';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    totalElectricians: 0,
-    pendingApprovals: 0,
-    approvedCount: 0,
-    rejectedCount: 0,
-    activeJobs: 0,
-    totalCommissionCollected: 0,
-    flaggedEquipmentClaims: 0
-  });
-  const [pendingQueue, setPendingQueue] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -35,15 +28,12 @@ export default function AdminDashboard() {
     try {
       setRefreshing(true);
       setError(null);
-      const [statsData, pendingData] = await Promise.all([
-        adminService.getDashboardStats(),
-        adminService.getApplications('Pending').catch(() => [])
-      ]);
-      setStats(statsData || {});
-      setPendingQueue(pendingData || []);
+      // Fetch year-to-date data so monthly job activity has complete trend points
+      const data = await adminService.getDashboardAnalytics('this_year');
+      setAnalytics(data);
     } catch (err) {
-      console.warn('Dashboard data fetch note:', err);
-      setError('Operating with current database records.');
+      console.error('Failed to load dashboard data:', err);
+      setError('Unable to load dashboard data from server.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -54,14 +44,41 @@ export default function AdminDashboard() {
     fetchDashboardData();
   }, []);
 
+  // Compute Core Metrics
+  const totalJobs = analytics?.jobStatuses?.total || 0;
+  const totalCustomers = analytics?.totalCustomers || 0;
+  const totalTechnicians = analytics?.totalTechnicians || 0;
+  const registeredUsers = totalCustomers + totalTechnicians;
+
+  const pendingTechs = analytics?.pendingTechnicianVerifications || 0;
+  const pendingJobs = analytics?.jobStatuses?.pending || 0;
+  const flaggedClaims = analytics?.flaggedEquipmentClaims || 0;
+  const itemsRequiringAttention = pendingTechs + pendingJobs + flaggedClaims;
+
+  // Quick access shortcuts
+  const shortcuts = [
+    { label: 'Manage Jobs', path: '/admin/jobs', icon: <BriefcaseIcon size={18} color="#2563eb" />, count: `${totalJobs} Jobs` },
+    { label: 'Manage Users', path: '/admin/users', icon: <UsersCheckIcon size={18} color="#059669" />, count: `${registeredUsers} Users` },
+    { label: 'Technicians', path: '/admin/technicians', icon: <ClipboardCheckIcon size={18} color="#7c3aed" />, count: `${totalTechnicians} Techs` },
+    { label: 'Equipment', path: '/admin/equipment', icon: <TagIcon size={18} color="#d97706" />, count: 'Price Catalog' },
+    { label: 'Finance', path: '/admin/finance', icon: <CreditCardIcon size={18} color="#0284c7" />, count: 'Ledger & Payouts' },
+    { label: 'Reports', path: '/admin/reports', icon: <FileTextIcon size={18} color="#475569" />, count: 'Exports' }
+  ];
+
+  // Latest 3 Audit Activities
+  const recentActivities = (analytics?.recentAudits || []).slice(0, 3);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1280px' }}>
-      {/* Page Header */}
-      <div className="admin-page-header">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1280px', margin: '0 auto', paddingBottom: '1.5rem' }}>
+      
+      {/* 1. Welcome / Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <h1 className="admin-page-title">Operations & Compliance Dashboard</h1>
-          <p className="admin-page-subtitle">
-            Centralized monitoring of technician licensing, accreditation checks, and price benchmark controls.
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            Dashboard
+          </h1>
+          <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Welcome to the ElectroSL administration overview. Monitor system activity and access management tools.
           </p>
         </div>
 
@@ -70,271 +87,410 @@ export default function AdminDashboard() {
           onClick={fetchDashboardData}
           disabled={refreshing}
           className="admin-btn admin-btn-secondary"
+          style={{ height: '32px', fontSize: '0.78rem' }}
         >
-          <RefreshCwIcon size={14} />
-          <span>{refreshing ? 'Refreshing...' : 'Refresh Feed'}</span>
+          <RefreshCwIcon size={14} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+          <span>{refreshing ? 'Updating...' : 'Refresh'}</span>
         </button>
       </div>
 
       {error && (
-        <div
-          style={{
-            padding: '0.65rem 1rem',
-            backgroundColor: '#fffbeb',
-            border: '1px solid #fde68a',
-            borderRadius: '4px',
-            color: '#92400e',
-            fontSize: '0.8125rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          <span>ℹ️</span>
-          <span>{error}</span>
+        <div style={{ padding: '0.65rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#991b1b', fontSize: '0.8125rem' }}>
+          {error}
         </div>
       )}
 
-      {/* KPI Stats Bar */}
+      {/* 2. Four Compact KPI Cards */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1rem'
+          gap: '0.85rem'
         }}
       >
-        <StatsCard
-          title="Pending Approvals"
-          value={loading ? '—' : stats.pendingApprovals ?? 0}
-          subtitle="Requires credential review"
-          color="yellow"
-          icon={<ClipboardCheckIcon size={18} />}
-          onClick={() => navigate('/admin/approvals')}
-        />
-        <StatsCard
-          title="Approved Electricians"
-          value={loading ? '—' : stats.approvedCount ?? 0}
-          subtitle="Authorized on platform"
-          color="green"
-          icon={<UsersCheckIcon size={18} />}
-          onClick={() => navigate('/admin/approved')}
-        />
-        <StatsCard
-          title="Rejected Applications"
-          value={loading ? '—' : stats.rejectedCount ?? 0}
-          subtitle="Non-compliant submissions"
-          color="red"
-          icon={<UserXIcon size={18} />}
-          onClick={() => navigate('/admin/rejected')}
-        />
-        <StatsCard
-          title="Total Commission"
-          value={loading ? '—' : formatCurrency(stats.totalCommissionCollected || 0)}
-          subtitle="15% platform earnings"
-          color="blue"
-          icon={<TagIcon size={18} />}
-        />
-        <StatsCard
-          title="Total Customers"
-          value={loading ? '—' : stats.totalCustomers ?? 0}
-          subtitle="Registered clients"
-          color="blue"
-          icon={<UsersCheckIcon size={18} />}
-          onClick={() => navigate('/admin/users')}
-        />
-        <StatsCard
-          title="Suspended Accounts"
-          value={loading ? '—' : stats.totalSuspendedAccounts ?? 0}
-          subtitle="Access revoked"
-          color="red"
-          icon={<ShieldAlertIcon size={18} />}
-          onClick={() => navigate('/admin/users')}
-        />
+        {/* Total Jobs */}
+        <div className="admin-card" style={{ padding: '0.9rem 1.1rem', borderLeft: '4px solid #2563eb' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.72rem', fontWeight: 600 }}>
+            <span>TOTAL JOBS</span>
+            <BriefcaseIcon size={16} color="#2563eb" />
+          </div>
+          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a', margin: '0.25rem 0 0.1rem 0' }}>
+            {loading ? '—' : totalJobs}
+          </div>
+          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+            Active: <strong>{analytics?.activeJobs || 0}</strong> · Pending: <strong>{pendingJobs}</strong>
+          </div>
+        </div>
+
+        {/* Registered Users */}
+        <div className="admin-card" style={{ padding: '0.9rem 1.1rem', borderLeft: '4px solid #059669' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.72rem', fontWeight: 600 }}>
+            <span>REGISTERED USERS</span>
+            <UsersCheckIcon size={16} color="#059669" />
+          </div>
+          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#065f46', margin: '0.25rem 0 0.1rem 0' }}>
+            {loading ? '—' : registeredUsers}
+          </div>
+          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+            {totalCustomers} Customers · {totalTechnicians} Technicians
+          </div>
+        </div>
+
+        {/* Total Technicians */}
+        <div className="admin-card" style={{ padding: '0.9rem 1.1rem', borderLeft: '4px solid #7c3aed' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.72rem', fontWeight: 600 }}>
+            <span>TOTAL TECHNICIANS</span>
+            <ClipboardCheckIcon size={16} color="#7c3aed" />
+          </div>
+          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#5b21b6', margin: '0.25rem 0 0.1rem 0' }}>
+            {loading ? '—' : totalTechnicians}
+          </div>
+          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+            Approved: <strong>{analytics?.technicianStats?.approved || 0}</strong> · Pending: <strong>{pendingTechs}</strong>
+          </div>
+        </div>
+
+        {/* Items Requiring Attention */}
+        <div
+          className="admin-card"
+          style={{
+            padding: '0.9rem 1.1rem',
+            borderLeft: `4px solid ${itemsRequiringAttention > 0 ? '#d97706' : '#10b981'}`,
+            backgroundColor: itemsRequiringAttention > 0 ? '#fffbeb' : '#f0fdf4'
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              color: itemsRequiringAttention > 0 ? '#92400e' : '#166534',
+              fontSize: '0.72rem',
+              fontWeight: 600
+            }}
+          >
+            <span>ITEMS REQUIRING ATTENTION</span>
+            <AlertTriangleIcon size={16} color={itemsRequiringAttention > 0 ? '#d97706' : '#10b981'} />
+          </div>
+          <div
+            style={{
+              fontSize: '1.65rem',
+              fontWeight: 800,
+              color: itemsRequiringAttention > 0 ? '#b45309' : '#15803d',
+              margin: '0.25rem 0 0.1rem 0'
+            }}
+          >
+            {loading ? '—' : itemsRequiringAttention}
+          </div>
+          <div style={{ fontSize: '0.72rem', color: itemsRequiringAttention > 0 ? '#92400e' : '#166534' }}>
+            {itemsRequiringAttention === 0 ? 'All items up to date' : `${pendingTechs} Techs · ${pendingJobs} Jobs · ${flaggedClaims} Claims`}
+          </div>
+        </div>
       </div>
 
-      {/* Main Grid: Pending Queue (65%) & Compliance Controls (35%) */}
+      {/* 3. Quick Access (Six Navigation Shortcuts) */}
+      <div>
+        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.5rem' }}>
+          Quick Access
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '0.75rem'
+          }}
+        >
+          {shortcuts.map((sc) => (
+            <div
+              key={sc.label}
+              onClick={() => navigate(sc.path)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.75rem 0.9rem',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#2563eb';
+                e.currentTarget.style.boxShadow = '0 2px 4px rgba(37,99,235,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#e2e8f0';
+                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.02)';
+              }}
+            >
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  backgroundColor: '#f8fafc',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid #f1f5f9'
+                }}
+              >
+                {sc.icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.825rem', fontWeight: 600, color: '#0f172a' }}>{sc.label}</div>
+                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{sc.count}</div>
+              </div>
+              <ArrowRightIcon size={13} color="#94a3b8" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. Middle Section: (Left) Monthly Job Activity & (Right) Needs Attention */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
           gap: '1.25rem',
-          alignItems: 'start'
+          alignItems: 'stretch'
         }}
       >
-        {/* Left: Pending Verification Queue */}
-        <div className="admin-card" style={{ flex: 1 }}>
-          <div className="admin-card-header">
+        {/* EXACTLY ONE GRAPH: Monthly Job Activity */}
+        <div className="admin-card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="admin-card-header" style={{ padding: '0.85rem 1.1rem' }}>
             <div>
-              <h2 className="admin-card-title">Pending Verification Queue</h2>
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                Electricians awaiting credential validation before licensing
+              <h2 className="admin-card-title" style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+                Monthly Job Activity
+              </h2>
+              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                Job creation volume over recent months from real platform records
               </span>
             </div>
             <button
               type="button"
-              onClick={() => navigate('/admin/approvals')}
+              onClick={() => navigate('/admin/jobs')}
               className="admin-btn admin-btn-ghost admin-btn-sm"
+              style={{ fontSize: '0.75rem', color: '#2563eb' }}
             >
-              View All ({stats.pendingApprovals ?? 0}) →
+              View Jobs →
             </button>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Applicant</th>
-                  <th>Specialization</th>
-                  <th>Simulator</th>
-                  <th>Documents</th>
-                  <th style={{ textAlign: 'right' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>
-                      Loading verification queue...
-                    </td>
-                  </tr>
-                ) : pendingQueue.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                      <span style={{ display: 'block', fontSize: '1.25rem', marginBottom: '0.25rem' }}>✓</span>
-                      No pending applications awaiting review.
-                    </td>
-                  </tr>
-                ) : (
-                  pendingQueue.slice(0, 5).map((app) => (
-                    <tr key={app.profileId}>
-                      <td>
-                        <div style={{ fontWeight: 600, color: '#0f172a' }}>{app.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{app.email}</div>
-                      </td>
-                      <td style={{ color: '#334155' }}>
-                        {app.specialization || 'General Electrician'}
-                      </td>
-                      <td>
-                        {app.simulatorPassed ? (
-                          <span style={{ color: '#16a34a', fontWeight: 600, fontSize: '0.75rem' }}>
-                            ✓ Passed
-                          </span>
-                        ) : (
-                          <span style={{ color: '#d97706', fontWeight: 600, fontSize: '0.75rem' }}>
-                            ⏳ Incomplete
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.25rem' }}>
-                          <span
-                            style={{
-                              fontSize: '0.6875rem',
-                              padding: '0.1rem 0.35rem',
-                              borderRadius: '3px',
-                              backgroundColor: app.nicDocumentUrl ? '#ecfdf5' : '#fef2f2',
-                              color: app.nicDocumentUrl ? '#065f46' : '#991b1b',
-                              border: `1px solid ${app.nicDocumentUrl ? '#a7f3d0' : '#fecaca'}`,
-                              fontWeight: 600
-                            }}
-                          >
-                            NIC
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '0.6875rem',
-                              padding: '0.1rem 0.35rem',
-                              borderRadius: '3px',
-                              backgroundColor: app.nvqCertificateUrl ? '#ecfdf5' : '#fef2f2',
-                              color: app.nvqCertificateUrl ? '#065f46' : '#991b1b',
-                              border: `1px solid ${app.nvqCertificateUrl ? '#a7f3d0' : '#fecaca'}`,
-                              fontWeight: 600
-                            }}
-                          >
-                            NVQ
-                          </span>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/admin/applications/${app.profileId}`)}
-                          className="admin-btn admin-btn-secondary admin-btn-sm"
-                        >
-                          Review Dossier
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0.5rem 1rem 1rem 1rem' }}>
+            <MonthlyJobActivityLineChart data={analytics?.jobTrends || []} height={160} />
           </div>
         </div>
 
-        {/* Right: Operational Controls & Compliance Policy */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Equipment Price Baseline & Claims */}
-          <div className="admin-card">
-            <div className="admin-card-header">
-              <h2 className="admin-card-title">Equipment Price Control</h2>
+        {/* Needs Attention Panel */}
+        <div className="admin-card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="admin-card-header" style={{ padding: '0.85rem 1.1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <AlertTriangleIcon size={16} color="#d97706" />
+              <h2 className="admin-card-title" style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+                Needs Attention
+              </h2>
             </div>
-            <p style={{ fontSize: '0.8125rem', color: '#475569', lineHeight: 1.5, margin: '0 0 1rem 0' }}>
-              Standard retail baselines for electrical materials. Technician invoice line-items exceeding allowable variance are automatically flagged for administrator review.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => navigate('/admin/equipment-claims')}
-                className="admin-btn admin-btn-danger"
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
-                <ShieldAlertIcon size={15} />
-                <span>Review Flagged Claims ({stats.flaggedEquipmentClaims || 0})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/admin/catalog')}
-                className="admin-btn admin-btn-secondary"
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
-                <TagIcon size={15} />
-                <span>Manage Equipment Catalog</span>
-              </button>
-            </div>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              Action Required
+            </span>
           </div>
 
-          {/* Licensing Policy Standards */}
-          <div className="admin-card">
-            <div className="admin-card-header">
-              <h2 className="admin-card-title">Onboarding Compliance Criteria</h2>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.8125rem' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                <span style={{ color: '#16a34a', fontWeight: 'bold' }}>✓</span>
-                <div>
-                  <strong style={{ color: '#0f172a' }}>Accredited NVQ Level 4</strong>
-                  <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Certified by TVEC or recognized institute.</div>
-                </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.85rem 1.1rem' }}>
+            {itemsRequiringAttention === 0 ? (
+              <div
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '1.5rem',
+                  backgroundColor: '#f0fdf4',
+                  border: '1px dashed #bbf7d0',
+                  borderRadius: '6px',
+                  color: '#166534',
+                  textAlign: 'center'
+                }}
+              >
+                <CheckIcon size={22} color="#16a34a" />
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, marginTop: '0.35rem' }}>
+                  All Operational Items Up to Date
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#15803d' }}>
+                  No pending verifications, unassigned emergency jobs, or flagged claims.
+                </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                <span style={{ color: '#16a34a', fontWeight: 'bold' }}>✓</span>
-                <div>
-                  <strong style={{ color: '#0f172a' }}>National Identity Verification</strong>
-                  <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Legitimate Sri Lankan NIC document copy.</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                <span style={{ color: '#16a34a', fontWeight: 'bold' }}>✓</span>
-                <div>
-                  <strong style={{ color: '#0f172a' }}>Circuit Simulator Test</strong>
-                  <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Passing score (≥ 75%) without critical wiring faults.</div>
-                </div>
-              </div>
-            </div>
+            ) : (
+              <>
+                {/* 1. Pending Technician Applications */}
+                {pendingTechs > 0 && (
+                  <div
+                    onClick={() => navigate('/admin/technicians')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.65rem 0.85rem',
+                      backgroundColor: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#d97706')}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#fde68a')}
+                  >
+                    <div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#92400e' }}>
+                        {pendingTechs} Technician Application{pendingTechs === 1 ? '' : 's'} Pending
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#b45309' }}>
+                        Awaiting TVEC NVQ Level 4 & NIC accreditation review
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600 }}>Review →</span>
+                  </div>
+                )}
+
+                {/* 2. Pending Jobs Requiring Action */}
+                {pendingJobs > 0 && (
+                  <div
+                    onClick={() => navigate('/admin/jobs')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.65rem 0.85rem',
+                      backgroundColor: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#2563eb')}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#bfdbfe')}
+                  >
+                    <div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e40af' }}>
+                        {pendingJobs} Job{pendingJobs === 1 ? '' : 's'} Awaiting Dispatch / Action
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#3b82f6' }}>
+                        Customer jobs awaiting quotation bids or electrician assignment
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>Inspect →</span>
+                  </div>
+                )}
+
+                {/* 3. Flagged Equipment Claims */}
+                {flaggedClaims > 0 && (
+                  <div
+                    onClick={() => navigate('/admin/equipment')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.65rem 0.85rem',
+                      backgroundColor: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#dc2626')}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#fecaca')}
+                  >
+                    <div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#991b1b' }}>
+                        {flaggedClaims} Equipment Price Claim{flaggedClaims === 1 ? '' : 's'} Flagged
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#b91c1c' }}>
+                        Material price exceeds catalog threshold by &gt; 20%
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600 }}>Verify →</span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {/* 5. Recent Activity (Latest 3 items) */}
+      <div className="admin-card" style={{ padding: '0.85rem 1.1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+            <ClockIcon size={15} color="#64748b" />
+            <h2 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+              Recent Activity
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/audit-logs')}
+            className="admin-btn admin-btn-ghost admin-btn-sm"
+            style={{ fontSize: '0.75rem', color: '#2563eb' }}
+          >
+            View full Audit Logs →
+          </button>
+        </div>
+
+        {recentActivities.length === 0 ? (
+          <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b', fontSize: '0.78rem' }}>
+            No recent administrative activities recorded.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {recentActivities.map((act, idx) => (
+              <div
+                key={act.auditLogId || idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.45rem 0.75rem',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #f1f5f9',
+                  borderRadius: '4px',
+                  fontSize: '0.78rem'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                  <span
+                    style={{
+                      fontSize: '0.6875rem',
+                      fontWeight: 700,
+                      color: '#1e40af',
+                      backgroundColor: '#dbeafe',
+                      padding: '0.1rem 0.4rem',
+                      borderRadius: '3px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {act.actionType || 'AdminAction'}
+                  </span>
+                  <span style={{ color: '#334155', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {act.description || `${act.actionType} on ${act.entityType} #${act.entityId}`}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                    {act.adminEmail || 'admin'}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                    {formatDateTime(act.createdAtUtc)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

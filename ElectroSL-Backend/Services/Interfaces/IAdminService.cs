@@ -16,7 +16,7 @@ public interface IAdminService
     // Equipment Price Catalog
     Task<List<CatalogItemDto>> GetAllCatalogItemsAsync(string? category, string? search, bool? isActive = null);
     Task<CatalogItemDto?> GetCatalogItemAsync(int itemId);
-    Task<CatalogActionResult<CatalogItemDto>> CreateCatalogItemAsync(CreateCatalogItemDto dto);
+    Task<CatalogActionResult<CatalogItemDto>> CreateCatalogItemAsync(CreateCatalogItemDto dto, int adminUserId = 1);
     Task<CatalogActionResult<CatalogItemDto>> UpdateCatalogItemAsync(int itemId, UpdateCatalogItemDto dto, int adminUserId);
     Task<CatalogActionResult<bool>> DeactivateCatalogItemAsync(int itemId, int? expectedVersion, int adminUserId);
     Task<CatalogActionResult<bool>> ActivateCatalogItemAsync(int itemId, int? expectedVersion, int adminUserId);
@@ -28,8 +28,10 @@ public interface IAdminService
     Task<ClaimReviewActionResult> ApproveEquipmentClaimAsync(int claimId, string? reviewNotes, int adminUserId);
     Task<ClaimReviewActionResult> RejectEquipmentClaimAsync(int claimId, string rejectionReason, int adminUserId);
 
-    // Dashboard
+    // Dashboard & Advanced Analytics (Task 4.2)
     Task<AdminDashboardStatsDto> GetDashboardStatsAsync();
+    Task<AdminDashboardAnalyticsDto> GetDashboardAnalyticsAsync(string? range, DateTime? customFrom = null, DateTime? customTo = null);
+    Task<AdminAdvancedAnalyticsDto> GetAdvancedAnalyticsAsync(string? range, DateTime? customFrom = null, DateTime? customTo = null);
 
     // User Management (Phase 3)
     Task<List<UserSummaryDto>> GetUsersAsync(string? role, string? search, string? status);
@@ -61,4 +63,11 @@ public interface IAdminService
     Task<JobActionResult<AdminJobDetailDto>> ReassignJobAsync(int jobId, AdminReassignJobDto dto, int adminUserId);
     Task<JobActionResult<AdminJobDetailDto>> CancelJobAsync(int jobId, AdminCancelJobDto dto, int adminUserId);
     Task<JobActionResult<AdminJobDetailDto>> ResolveDisputeAsync(int jobId, AdminResolveDisputeDto dto, int adminUserId);
+
+    // Agreed Labour Amount & Audit Mutation (Phase 3 Task 3.4.5E)
+    Task<JobActionResult<SetAgreedLabourAmountResultDto>> SetAgreedLabourAmountAsync(
+        int jobId, 
+        SetAgreedLabourAmountDto dto, 
+        int adminUserId, 
+        CancellationToken cancellationToken = default);
 }

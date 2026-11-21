@@ -20,6 +20,10 @@ public class ElectroSLDbContext : DbContext
     public DbSet<Review> Reviews { get; set; }
     public DbSet<TechnicianAuditLog> TechnicianAuditLogs { get; set; }
     public DbSet<Notification> Notifications { get; set; }
+    public DbSet<WalletTransaction> WalletTransactions { get; set; }
+    public DbSet<TechnicianPayoutRecord> TechnicianPayoutRecords { get; set; }
+    public DbSet<JobAgreedLabourAudit> JobAgreedLabourAudits { get; set; }
+    public DbSet<AdminAuditLog> AdminAuditLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,11 +109,50 @@ public class ElectroSLDbContext : DbContext
                   .IsRequired(false)
                   .OnDelete(DeleteBehavior.Restrict);
 
+            // Phase 3 Task 3.4.5E — Authoritative Agreed Labour Amount & Audit
+            entity.Property(j => j.AgreedLabourAmount)
+                  .HasPrecision(18, 2)
+                  .IsRequired(false);
+
+            entity.Property(j => j.AgreedLabourNotes)
+                  .HasMaxLength(500);
+
+            entity.HasOne(j => j.AgreedLabourAmountSetByAdmin)
+                  .WithMany()
+                  .HasForeignKey(j => j.AgreedLabourAmountSetByAdminId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Restrict);
+
             entity.HasIndex(j => j.Status);
             entity.HasIndex(j => j.JobType);
             entity.HasIndex(j => j.IsEmergency);
             entity.HasIndex(j => j.AssignedByAdminId);
             entity.HasIndex(j => j.CancelledByUserId);
+            entity.HasIndex(j => j.AgreedLabourAmountSetByAdminId);
+        });
+
+        // JobAgreedLabourAudit Entity Configuration
+        modelBuilder.Entity<JobAgreedLabourAudit>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.PreviousAmount).HasPrecision(18, 2);
+            entity.Property(a => a.NewAmount).HasPrecision(18, 2).IsRequired();
+            entity.Property(a => a.Notes).HasMaxLength(500);
+            entity.Property(a => a.ChangedAtUtc).IsRequired();
+
+            entity.HasOne(a => a.Job)
+                  .WithMany(j => j.AgreedLabourAudits)
+                  .HasForeignKey(a => a.JobId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(a => a.Admin)
+                  .WithMany()
+                  .HasForeignKey(a => a.AdminId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(a => a.JobId);
+            entity.HasIndex(a => a.AdminId);
+            entity.HasIndex(a => a.ChangedAtUtc);
         });
 
         // 4. JobBid Entity Configuration
@@ -281,6 +324,107 @@ public class ElectroSLDbContext : DbContext
                   .WithMany(u => u.AdminAuditActions)
                   .HasForeignKey(al => al.AdminId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // 12. WalletTransaction Entity Configuration (Immutable Financial Ledger)
+        modelBuilder.Entity<WalletTransaction>(entity =>
+        {
+            entity.HasKey(wt => wt.TransactionId);
+            entity.Property(wt => wt.Amount).HasPrecision(18, 2).IsRequired();
+            entity.Property(wt => wt.BalanceBefore).HasPrecision(18, 2).IsRequired();
+            entity.Property(wt => wt.BalanceAfter).HasPrecision(18, 2).IsRequired();
+            entity.Property(wt => wt.TransactionType).HasConversion<int>().IsRequired();
+            entity.Property(wt => wt.Description).HasMaxLength(255).IsRequired();
+            entity.Property(wt => wt.ExternalReferenceNumber).HasMaxLength(100);
+
+            entity.HasOne(wt => wt.ElectricianProfile)
+                  .WithMany(ep => ep.WalletTransactions)
+                  .HasForeignKey(wt => wt.ElectricianProfileId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(wt => wt.Job)
+                  .WithMany()
+                  .HasForeignKey(wt => wt.JobId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(wt => wt.PaymentTransaction)
+                  .WithMany(pt => pt.WalletTransactions)
+                  .HasForeignKey(wt => wt.PaymentTransactionId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(wt => wt.PayoutRecord)
+                  .WithMany(pr => pr.WalletTransactions)
+                  .HasForeignKey(wt => wt.PayoutRecordId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(wt => wt.InitiatedByAdmin)
+                  .WithMany(u => u.AdminInitiatedWalletTransactions)
+                  .HasForeignKey(wt => wt.InitiatedByAdminId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(wt => wt.ElectricianProfileId);
+            entity.HasIndex(wt => wt.JobId);
+            entity.HasIndex(wt => wt.PaymentTransactionId);
+            entity.HasIndex(wt => wt.PayoutRecordId);
+            entity.HasIndex(wt => wt.CreatedAtUtc);
+            entity.HasIndex(wt => wt.TransactionType);
+
+            // Database-level idempotency constraint: a PaymentTransaction can only have one ledger entry per TransactionType
+            // Standard SQL / MariaDB semantics allow multiple NULLs for non-job records (e.g. payouts, adjustments)
+            entity.HasIndex(wt => new { wt.PaymentTransactionId, wt.TransactionType })
+                  .IsUnique();
+        });
+
+        // 13. TechnicianPayoutRecord Entity Configuration (Admin Payout Tracking)
+        modelBuilder.Entity<TechnicianPayoutRecord>(entity =>
+        {
+            entity.HasKey(pr => pr.PayoutId);
+            entity.Property(pr => pr.Amount).HasPrecision(18, 2).IsRequired();
+            entity.Property(pr => pr.BankName).HasMaxLength(100).IsRequired();
+            entity.Property(pr => pr.AccountNumberMasked).HasMaxLength(30).IsRequired();
+            entity.Property(pr => pr.BankTransferReference).HasMaxLength(100).IsRequired();
+            entity.Property(pr => pr.AdminNotes).HasMaxLength(500).IsRequired();
+
+            entity.HasOne(pr => pr.ElectricianProfile)
+                  .WithMany(ep => ep.PayoutRecords)
+                  .HasForeignKey(pr => pr.ElectricianProfileId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(pr => pr.RecordedByAdmin)
+                  .WithMany(u => u.AdminRecordedPayouts)
+                  .HasForeignKey(pr => pr.RecordedByAdminId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(pr => pr.ElectricianProfileId);
+            entity.HasIndex(pr => pr.RecordedByAdminId);
+            entity.HasIndex(pr => pr.DisbursedAtUtc);
+        });
+
+        // 14. AdminAuditLog Entity Configuration (Unified Immutable Administrative Audit Trail)
+        modelBuilder.Entity<AdminAuditLog>(entity =>
+        {
+            entity.HasKey(a => a.AuditLogId);
+            entity.Property(a => a.ActionType).HasMaxLength(100).IsRequired();
+            entity.Property(a => a.EntityType).HasMaxLength(100).IsRequired();
+            entity.Property(a => a.EntityId).HasMaxLength(100).IsRequired();
+            entity.Property(a => a.Description).HasMaxLength(1000).IsRequired();
+            entity.Property(a => a.Reason).HasMaxLength(1000);
+            entity.Property(a => a.IpAddress).HasMaxLength(50);
+            entity.Property(a => a.CreatedAtUtc).IsRequired();
+
+            entity.HasOne(a => a.AdminUser)
+                  .WithMany()
+                  .HasForeignKey(a => a.AdminUserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(a => a.AdminUserId);
+            entity.HasIndex(a => a.ActionType);
+            entity.HasIndex(a => new { a.EntityType, a.EntityId });
+            entity.HasIndex(a => a.CreatedAtUtc);
         });
     }
 }

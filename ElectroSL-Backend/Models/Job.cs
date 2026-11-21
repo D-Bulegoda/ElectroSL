@@ -46,11 +46,19 @@ public class Job
     // Completion Tracking
     public DateTime? CompletedAt { get; set; }
 
+    // Authoritative Agreed Labour Charge & Admin Audit Tracking
+    public decimal? AgreedLabourAmount { get; set; }
+    public int? AgreedLabourAmountSetByAdminId { get; set; }
+    public DateTime? AgreedLabourAmountSetAtUtc { get; set; }
+    public string? AgreedLabourNotes { get; set; }
+
     // Navigation Properties
     public User Customer { get; set; } = null!;
     public User? Electrician { get; set; }
     public User? AssignedByAdmin { get; set; }
     public User? CancelledByUser { get; set; }
+    public User? AgreedLabourAmountSetByAdmin { get; set; }
+    public ICollection<JobAgreedLabourAudit> AgreedLabourAudits { get; set; } = new List<JobAgreedLabourAudit>();
     public ICollection<JobBid> JobBids { get; set; } = new List<JobBid>();
     public ICollection<JobUsedEquipment> JobUsedEquipments { get; set; } = new List<JobUsedEquipment>();
     public PaymentTransaction? PaymentTransaction { get; set; }
