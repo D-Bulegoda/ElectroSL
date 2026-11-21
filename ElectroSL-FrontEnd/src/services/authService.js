@@ -13,3 +13,10 @@ export const verifyOTP = async (otpCode) => {
     body: JSON.stringify({ otpCode }),
   });
 };
+
+export const logoutUser = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('jwt');
+  localStorage.removeItem('role');
+  localStorage.removeItem('user');
+};

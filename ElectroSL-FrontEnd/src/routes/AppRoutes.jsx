@@ -5,6 +5,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from '../pages/Home/Home';
 import AdminLogin from '../pages/Admin/AdminLogin';
 
+// Protected Route Guard
+import ProtectedRoute from './ProtectedRoute';
+
 // Authentication pages
 import Login from '../pages/Auth/Login';
 import SignUpElectrician from '../pages/Auth/SignUpElectrician';
@@ -39,6 +42,9 @@ import ApplicationDetail from '../pages/Admin/ApplicationDetail';
 import ApprovedElectricians from '../pages/Admin/ApprovedElectricians';
 import RejectedApplications from '../pages/Admin/RejectedApplications';
 import EquipmentPriceCatalog from '../pages/Admin/EquipmentPriceCatalog';
+import FlaggedEquipmentClaims from '../pages/Admin/FlaggedEquipmentClaims';
+import UserManagement from '../pages/Admin/UserManagement';
+import AdminJobManagement from '../pages/Admin/AdminJobManagement';
 
 // Payment & Notification Components
 import MockPaymentGateway from '../components/payments/MockPaymentGateway';
@@ -54,15 +60,20 @@ function AppRoutes() {
         {/* Hidden Admin Login */}
         <Route path="/admin-portal/login" element={<AdminLogin />} />
 
-        {/* Admin Portal */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="approvals" element={<TechnicianApprovals />} />
-          <Route path="applications/:id" element={<ApplicationDetail />} />
-          <Route path="approved" element={<ApprovedElectricians />} />
-          <Route path="rejected" element={<RejectedApplications />} />
-          <Route path="catalog" element={<EquipmentPriceCatalog />} />
+        {/* Admin Portal (Protected: Admin Only) */}
+        <Route element={<ProtectedRoute allowedRole="Admin" />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="jobs" element={<AdminJobManagement />} />
+            <Route path="approvals" element={<TechnicianApprovals />} />
+            <Route path="applications/:id" element={<ApplicationDetail />} />
+            <Route path="approved" element={<ApprovedElectricians />} />
+            <Route path="rejected" element={<RejectedApplications />} />
+            <Route path="catalog" element={<EquipmentPriceCatalog />} />
+            <Route path="equipment-claims" element={<FlaggedEquipmentClaims />} />
+          </Route>
         </Route>
 
         {/* Authentication */}

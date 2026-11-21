@@ -27,4 +27,7 @@ public class ApplicationDetailDto
 
     // Financial
     public decimal WalletBalance { get; set; }
+
+    // Persistent Audit History Log
+    public List<TechnicianAuditLogDto> AuditLogs { get; set; } = new();
 }

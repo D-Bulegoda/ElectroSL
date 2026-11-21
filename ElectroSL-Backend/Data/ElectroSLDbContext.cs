@@ -14,9 +14,11 @@ public class ElectroSLDbContext : DbContext
     public DbSet<Job> Jobs { get; set; }
     public DbSet<JobBid> JobBids { get; set; }
     public DbSet<EquipmentCatalog> EquipmentCatalog { get; set; }
+    public DbSet<EquipmentPriceHistory> EquipmentPriceHistories { get; set; }
     public DbSet<JobUsedEquipment> JobUsedEquipments { get; set; }
     public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
     public DbSet<Review> Reviews { get; set; }
+    public DbSet<TechnicianAuditLog> TechnicianAuditLogs { get; set; }
     public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -33,6 +35,14 @@ public class ElectroSLDbContext : DbContext
             entity.Property(u => u.Role).HasMaxLength(30).IsRequired();
             entity.Property(u => u.Phone).HasMaxLength(20);
             entity.Property(u => u.OtpCodeHash).HasMaxLength(256);
+            entity.Property(u => u.IsActive).HasDefaultValue(true).IsRequired();
+            entity.Property(u => u.AccountStatus).HasMaxLength(30).HasDefaultValue("Active").IsRequired();
+            entity.Property(u => u.SuspensionReason).HasMaxLength(500);
+            entity.Property(u => u.ConcurrencyVersion).HasDefaultValue(1).IsConcurrencyToken();
+
+            entity.HasIndex(u => u.AccountStatus);
+            entity.HasIndex(u => u.Role);
+            entity.HasIndex(u => u.IsActive);
         });
 
         // 2. ElectricianProfile Entity Configuration (1-to-0..1 with User)
@@ -42,7 +52,8 @@ public class ElectroSLDbContext : DbContext
             entity.Property(ep => ep.AppWalletBalance).HasPrecision(18, 2);
             entity.Property(ep => ep.Specialization).HasMaxLength(100);
             entity.Property(ep => ep.NicDocumentUrl).HasMaxLength(500).HasDefaultValue(string.Empty);
-            entity.Property(ep => ep.VerificationStatus).HasMaxLength(50).HasDefaultValue("Pending");
+            entity.Property(ep => ep.VerificationStatus).HasMaxLength(50).HasDefaultValue("Pending").IsConcurrencyToken();
+            entity.Property(ep => ep.ReviewedAt).IsConcurrencyToken();
 
             entity.HasOne(ep => ep.User)
                   .WithOne(u => u.ElectricianProfile)
@@ -73,6 +84,32 @@ public class ElectroSLDbContext : DbContext
                   .HasForeignKey(j => j.ElectricianId)
                   .IsRequired(false)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            // Phase 3 — Task 3.3.1: Job Operations Database Foundation & Concurrency Token
+            entity.Property(j => j.ConcurrencyVersion).HasDefaultValue(1).IsConcurrencyToken();
+            entity.Property(j => j.CancellationReason).HasMaxLength(500);
+            entity.Property(j => j.DisputeReason).HasMaxLength(500);
+            entity.Property(j => j.DisputeResolutionNotes).HasMaxLength(1000);
+
+            // AssignedByAdmin (User 1-to-Many Job, Optional)
+            entity.HasOne(j => j.AssignedByAdmin)
+                  .WithMany()
+                  .HasForeignKey(j => j.AssignedByAdminId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            // CancelledByUser (User 1-to-Many Job, Optional)
+            entity.HasOne(j => j.CancelledByUser)
+                  .WithMany()
+                  .HasForeignKey(j => j.CancelledByUserId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(j => j.Status);
+            entity.HasIndex(j => j.JobType);
+            entity.HasIndex(j => j.IsEmergency);
+            entity.HasIndex(j => j.AssignedByAdminId);
+            entity.HasIndex(j => j.CancelledByUserId);
         });
 
         // 4. JobBid Entity Configuration
@@ -101,6 +138,11 @@ public class ElectroSLDbContext : DbContext
             entity.Property(jue => jue.ClaimedPrice).HasPrecision(18, 2);
             entity.Property(jue => jue.VariancePercentage).HasPrecision(5, 2);
             entity.Property(jue => jue.ItemName).HasMaxLength(150);
+            entity.Property(jue => jue.Status)
+                  .HasMaxLength(50)
+                  .HasDefaultValue("Legacy")
+                  .IsConcurrencyToken();
+            entity.Property(jue => jue.AdminReviewNotes).HasMaxLength(1000);
 
             // Job (1-to-Many JobUsedEquipment) - Restrict delete behavior as requested
             entity.HasOne(jue => jue.Job)
@@ -114,6 +156,22 @@ public class ElectroSLDbContext : DbContext
                   .HasForeignKey(jue => jue.CatalogItemId)
                   .IsRequired(false)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            // ReviewedByAdmin (User Optional 1-to-Many JobUsedEquipment)
+            entity.HasOne(jue => jue.ReviewedByAdmin)
+                  .WithMany(u => u.ReviewedEquipments)
+                  .HasForeignKey(jue => jue.ReviewedByAdminId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(jue => jue.ReviewedByAdminId);
+            entity.HasIndex(jue => jue.CatalogItemId);
+            entity.HasIndex(jue => jue.JobId);
+
+            // Phase 2: Database-level uniqueness on (JobId, CatalogItemId) to prevent duplicate claims
+            // Allows multiple NULL CatalogItemId values for legacy/unmapped claims per standard SQL/MySQL semantics
+            entity.HasIndex(jue => new { jue.JobId, jue.CatalogItemId })
+                  .IsUnique();
         });
 
         // 6. PaymentTransaction Entity Configuration (1-to-1 Optional with Job)
@@ -166,9 +224,63 @@ public class ElectroSLDbContext : DbContext
         {
             entity.HasKey(ec => ec.ItemId);
             entity.Property(ec => ec.StandardMarketPrice).HasPrecision(18, 2);
+            entity.Property(ec => ec.PriceVarianceThreshold).HasPrecision(5, 2).HasDefaultValue(5.00m);
             entity.Property(ec => ec.Category).HasMaxLength(100);
             entity.Property(ec => ec.BrandName).HasMaxLength(100);
             entity.Property(ec => ec.Specification).HasMaxLength(255);
+            entity.Property(ec => ec.ItemName).HasMaxLength(150).HasDefaultValue(string.Empty);
+            entity.Property(ec => ec.Description).HasMaxLength(1000);
+            entity.Property(ec => ec.Unit).HasMaxLength(50).HasDefaultValue("Unit");
+            entity.Property(ec => ec.IsActive).HasDefaultValue(true);
+            entity.Property(ec => ec.ConcurrencyVersion).IsConcurrencyToken().HasDefaultValue(1);
+            entity.Property(ec => ec.LastUpdated).IsConcurrencyToken();
+
+            entity.HasIndex(ec => ec.Category);
+            entity.HasIndex(ec => ec.IsActive);
+        });
+
+        // 10. EquipmentPriceHistory Entity Configuration
+        modelBuilder.Entity<EquipmentPriceHistory>(entity =>
+        {
+            entity.HasKey(eph => eph.Id);
+            entity.Property(eph => eph.OldPrice).HasPrecision(18, 2);
+            entity.Property(eph => eph.NewPrice).HasPrecision(18, 2);
+            entity.Property(eph => eph.ChangePercentage).HasPrecision(5, 2);
+            entity.Property(eph => eph.Reason).HasMaxLength(1000);
+
+            entity.HasOne(eph => eph.EquipmentCatalog)
+                  .WithMany(ec => ec.PriceHistories)
+                  .HasForeignKey(eph => eph.CatalogItemId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(eph => eph.ChangedByAdmin)
+                  .WithMany(u => u.PriceChangeActions)
+                  .HasForeignKey(eph => eph.ChangedByAdminId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(eph => eph.CatalogItemId);
+            entity.HasIndex(eph => eph.ChangedByAdminId);
+            entity.HasIndex(eph => eph.EffectiveDateUtc);
+        });
+
+        // 11. TechnicianAuditLog Entity Configuration
+        modelBuilder.Entity<TechnicianAuditLog>(entity =>
+        {
+            entity.HasKey(al => al.Id);
+            entity.Property(al => al.Action).HasMaxLength(50).IsRequired();
+            entity.Property(al => al.PreviousStatus).HasMaxLength(50).IsRequired();
+            entity.Property(al => al.NewStatus).HasMaxLength(50).IsRequired();
+            entity.Property(al => al.Reason).HasMaxLength(1000);
+
+            entity.HasOne(al => al.ElectricianProfile)
+                  .WithMany(ep => ep.AuditLogs)
+                  .HasForeignKey(al => al.ElectricianProfileId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(al => al.Admin)
+                  .WithMany(u => u.AdminAuditActions)
+                  .HasForeignKey(al => al.AdminId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

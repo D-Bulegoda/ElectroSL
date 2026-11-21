@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Modal from '../common/Modal';
-import Button from '../common/Button';
 
 const RejectionModal = ({ isOpen, onClose, onConfirm, technicianName, isSubmitting }) => {
   const [reason, setReason] = useState('');
@@ -9,7 +8,7 @@ const RejectionModal = ({ isOpen, onClose, onConfirm, technicianName, isSubmitti
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!reason || reason.trim().length < 10) {
-      setError('Please provide a specific rejection reason of at least 10 characters.');
+      setError('A specific rejection reason of at least 10 characters is required for the audit record.');
       return;
     }
     setError('');
@@ -23,16 +22,17 @@ const RejectionModal = ({ isOpen, onClose, onConfirm, technicianName, isSubmitti
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Reject Application">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Reject Technician Application">
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <p style={{ margin: 0, fontSize: '0.9rem', color: '#4b5563' }}>
-          You are rejecting the technician application for{' '}
-          <strong style={{ color: '#111827' }}>{technicianName || 'this technician'}</strong>.
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: '#475569', lineHeight: 1.5 }}>
+          You are recording a rejection for applicant{' '}
+          <strong style={{ color: '#0f172a' }}>{technicianName || 'this technician'}</strong>. The reason will be
+          logged in the audit history.
         </p>
 
-        <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
-            Reason for Rejection *
+        <div className="admin-form-group">
+          <label className="admin-label">
+            Audit Reason for Rejection *
           </label>
           <textarea
             rows={4}
@@ -41,15 +41,10 @@ const RejectionModal = ({ isOpen, onClose, onConfirm, technicianName, isSubmitti
               setReason(e.target.value);
               if (error) setError('');
             }}
-            placeholder="e.g. NVQ Level 4 certificate is expired or unreadable; NIC photo is blurred..."
+            placeholder="e.g. NVQ Level 4 certificate is blurred and unreadable; NIC document photo does not match..."
+            className="admin-textarea"
             style={{
-              width: '100%',
-              padding: '0.6rem',
-              borderRadius: '0.375rem',
-              border: error ? '1px solid #ef4444' : '1px solid #d1d5db',
-              fontSize: '0.875rem',
-              fontFamily: 'inherit',
-              boxSizing: 'border-box'
+              borderColor: error ? '#ef4444' : '#cbd5e1'
             }}
           />
           {error && (
@@ -57,39 +52,25 @@ const RejectionModal = ({ isOpen, onClose, onConfirm, technicianName, isSubmitti
               {error}
             </p>
           )}
+          <span style={{ fontSize: '0.6875rem', color: '#94a3b8', alignSelf: 'flex-end' }}>
+            Min 10 characters ({reason.trim().length} entered)
+          </span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
           <button
             type="button"
             onClick={handleClose}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              borderRadius: '0.375rem',
-              border: '1px solid #d1d5db',
-              fontWeight: 500,
-              cursor: 'pointer'
-            }}
+            className="admin-btn admin-btn-secondary"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#dc2626',
-              color: '#ffffff',
-              borderRadius: '0.375rem',
-              border: 'none',
-              fontWeight: 600,
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              opacity: isSubmitting ? 0.7 : 1
-            }}
+            className="admin-btn admin-btn-danger"
           >
-            {isSubmitting ? 'Rejecting...' : 'Confirm Rejection'}
+            {isSubmitting ? 'Recording...' : 'Confirm Rejection'}
           </button>
         </div>
       </form>
@@ -98,4 +79,3 @@ const RejectionModal = ({ isOpen, onClose, onConfirm, technicianName, isSubmitti
 };
 
 export default RejectionModal;
-

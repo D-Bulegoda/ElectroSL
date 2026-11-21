@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import StatusBadge from '../../components/admin/StatusBadge';
 import { formatDateTime } from '../../utils/formattingHelpers';
+import {
+  SearchIcon,
+  RefreshCwIcon,
+  CheckIcon,
+  EyeIcon
+} from '../../components/admin/AdminIcons';
 
 const ApprovedElectricians = ({ onSelectApplication }) => {
+  const navigate = useNavigate();
   const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,119 +45,143 @@ const ApprovedElectricians = ({ onSelectApplication }) => {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1280px' }}>
+      {/* Page Header */}
+      <div className="admin-page-header">
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-            Approved Electricians Directory
-          </h2>
-          <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0.25rem 0 0 0' }}>
-            Fully verified electricians authorized to receive customer jobs and bids.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <h1 className="admin-page-title">Approved Electricians Directory</h1>
+            <span
+              style={{
+                fontSize: '0.6875rem',
+                fontWeight: 700,
+                backgroundColor: '#ecfdf5',
+                color: '#065f46',
+                border: '1px solid #a7f3d0',
+                padding: '0.15rem 0.5rem',
+                borderRadius: '4px'
+              }}
+            >
+              {technicians.length} Licensed
+            </span>
+          </div>
+          <p className="admin-page-subtitle">
+            Directory of fully accredited electricians authorized to receive customer job dispatches and submit quotes.
           </p>
         </div>
 
         <button
           type="button"
           onClick={fetchApproved}
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#f1f5f9',
-            border: '1px solid #cbd5e1',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            fontSize: '0.85rem'
-          }}
+          disabled={loading}
+          className="admin-btn admin-btn-secondary"
         >
-          🔄 Refresh
+          <RefreshCwIcon size={14} />
+          <span>Refresh</span>
         </button>
       </div>
 
       {error && (
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.375rem', color: '#991b1b', fontSize: '0.85rem' }}>
+        <div style={{ padding: '0.65rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '4px', color: '#991b1b', fontSize: '0.8125rem' }}>
           {error}
         </div>
       )}
 
-      {/* Search Bar */}
-      <div style={{ backgroundColor: '#ffffff', padding: '1rem', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <input
-          type="text"
-          placeholder="Filter approved electricians by name, email, or skill..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '0.6rem 0.85rem',
-            borderRadius: '0.375rem',
-            border: '1px solid #cbd5e1',
-            fontSize: '0.875rem',
-            boxSizing: 'border-box'
-          }}
-        />
+      {/* Toolbar */}
+      <div className="admin-toolbar">
+        <div className="admin-search-box">
+          <span className="admin-search-icon">
+            <SearchIcon size={14} />
+          </span>
+          <input
+            type="text"
+            placeholder="Search by name, email, specialization..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="admin-search-input"
+          />
+        </div>
       </div>
 
       {/* Table */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+      <div className="admin-table-wrapper">
+        <table className="admin-table">
           <thead>
-            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-              <th style={{ padding: '0.75rem 1rem' }}>Technician</th>
-              <th style={{ padding: '0.75rem 1rem' }}>Specialization</th>
-              <th style={{ padding: '0.75rem 1rem' }}>NVQ Level 4</th>
-              <th style={{ padding: '0.75rem 1rem' }}>NIC Verified</th>
-              <th style={{ padding: '0.75rem 1rem' }}>Status</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Actions</th>
+            <tr>
+              <th>Technician</th>
+              <th>Specialization</th>
+              <th>NVQ Level 4</th>
+              <th>NIC Verified</th>
+              <th>Status</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
                 <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-                  Loading approved directory...
+                  Loading approved electricians...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
                   No approved electricians found.
                 </td>
               </tr>
             ) : (
               filtered.map((tech) => (
-                <tr key={tech.profileId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <div style={{ fontWeight: 600, color: '#1e293b' }}>{tech.name}</div>
+                <tr key={tech.profileId}>
+                  <td>
+                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{tech.name}</div>
                     <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{tech.email}</div>
                   </td>
-                  <td style={{ padding: '0.75rem 1rem', color: '#334155' }}>
+                  <td style={{ color: '#334155' }}>
                     {tech.specialization || 'General Electrician'}
                   </td>
-                  <td style={{ padding: '0.75rem 1rem', color: '#16a34a', fontWeight: 600, fontSize: '0.8rem' }}>
-                    Verified ✅
+                  <td>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        fontSize: '0.75rem',
+                        color: '#065f46',
+                        fontWeight: 600
+                      }}
+                    >
+                      <CheckIcon size={12} color="#065f46" /> Verified
+                    </span>
                   </td>
-                  <td style={{ padding: '0.75rem 1rem', color: '#16a34a', fontWeight: 600, fontSize: '0.8rem' }}>
-                    Verified ✅
+                  <td>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        fontSize: '0.75rem',
+                        color: '#065f46',
+                        fontWeight: 600
+                      }}
+                    >
+                      <CheckIcon size={12} color="#065f46" /> Verified
+                    </span>
                   </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
+                  <td>
                     <StatusBadge status="Approved" />
                   </td>
-                  <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                    {onSelectApplication && (
-                      <button
-                        type="button"
-                        onClick={() => onSelectApplication(tech.profileId)}
-                        style={{
-                          padding: '0.35rem 0.65rem',
-                          backgroundColor: '#f1f5f9',
-                          border: '1px solid #cbd5e1',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        View Dossier
-                      </button>
-                    )}
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onSelectApplication
+                          ? onSelectApplication(tech.profileId)
+                          : navigate(`/admin/applications/${tech.profileId}`)
+                      }
+                      className="admin-btn admin-btn-secondary admin-btn-sm"
+                    >
+                      View Dossier
+                    </button>
                   </td>
                 </tr>
               ))
@@ -162,4 +194,3 @@ const ApprovedElectricians = ({ onSelectApplication }) => {
 };
 
 export default ApprovedElectricians;
-
