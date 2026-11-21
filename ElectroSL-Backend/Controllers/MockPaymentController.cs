@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using ElectroSL_Backend.Models;
 using ElectroSL_Backend.Data;
 
+namespace ElectroSL_Backend.Controllers;
+
 [Route("api/[controller]")]
 [ApiController]
 public class MockPaymentController : ControllerBase
@@ -16,6 +18,11 @@ public class MockPaymentController : ControllerBase
     [HttpPost("process")]
     public async Task<IActionResult> ProcessPayment([FromBody] PaymentRequestDto dto)
     {
+        if (dto == null || dto.TotalAmount <= 0)
+        {
+            return BadRequest(new { success = false, message = "Invalid payment amount." });
+        }
+
         // 15% platform commission split calculation
         decimal platformCommission = dto.TotalAmount * 0.15m;
         decimal electricianEarning = dto.TotalAmount - platformCommission;

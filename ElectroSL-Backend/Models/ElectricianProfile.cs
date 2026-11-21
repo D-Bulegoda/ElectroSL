@@ -30,4 +30,5 @@ public class ElectricianProfile
 
     // Navigation Property
     public User User { get; set; } = null!;
+    public ICollection<TechnicianAuditLog> AuditLogs { get; set; } = new List<TechnicianAuditLog>();
 }

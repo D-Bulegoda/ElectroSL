@@ -61,6 +61,7 @@ namespace ElectroSL_Backend.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<DateTime?>("ReviewedAt")
+                        .IsConcurrencyToken()
                         .HasColumnType("datetime(6)");
 
                     b.Property<int?>("ReviewedByAdminId")
@@ -75,6 +76,7 @@ namespace ElectroSL_Backend.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("VerificationStatus")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(50)
@@ -107,8 +109,37 @@ namespace ElectroSL_Backend.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<int>("ConcurrencyVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)")
+                        .HasDefaultValue("");
+
                     b.Property<DateTime>("LastUpdated")
+                        .IsConcurrencyToken()
                         .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("PriceVarianceThreshold")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)")
+                        .HasDefaultValue(5.00m);
 
                     b.Property<string>("Specification")
                         .IsRequired()
@@ -119,9 +150,64 @@ namespace ElectroSL_Backend.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasDefaultValue("Unit");
+
                     b.HasKey("ItemId");
 
+                    b.HasIndex("Category");
+
+                    b.HasIndex("IsActive");
+
                     b.ToTable("EquipmentCatalog");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.EquipmentPriceHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CatalogItemId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("ChangePercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int>("ChangedByAdminId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EffectiveDateUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("NewPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("OldPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogItemId");
+
+                    b.HasIndex("ChangedByAdminId");
+
+                    b.HasIndex("EffectiveDateUtc");
+
+                    b.ToTable("EquipmentPriceHistories");
                 });
 
             modelBuilder.Entity("ElectroSL_Backend.Models.Job", b =>
@@ -132,6 +218,31 @@ namespace ElectroSL_Backend.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("JobId"));
 
+                    b.Property<DateTime?>("AssignedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("AssignedByAdminId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CancelledByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ConcurrencyVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -141,6 +252,17 @@ namespace ElectroSL_Backend.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<string>("DisputeReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("DisputeResolutionNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime?>("DisputeResolvedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("ElectricianId")
                         .HasColumnType("int");
@@ -180,9 +302,19 @@ namespace ElectroSL_Backend.Migrations
 
                     b.HasKey("JobId");
 
+                    b.HasIndex("AssignedByAdminId");
+
+                    b.HasIndex("CancelledByUserId");
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("ElectricianId");
+
+                    b.HasIndex("IsEmergency");
+
+                    b.HasIndex("JobType");
+
+                    b.HasIndex("Status");
 
                     b.ToTable("Jobs");
                 });
@@ -229,6 +361,10 @@ namespace ElectroSL_Backend.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AdminReviewNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
                     b.Property<int?>("CatalogItemId")
                         .HasColumnType("int");
 
@@ -251,6 +387,20 @@ namespace ElectroSL_Backend.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ReviewedByAdminId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasDefaultValue("Legacy");
+
                     b.Property<decimal>("VariancePercentage")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
@@ -260,6 +410,11 @@ namespace ElectroSL_Backend.Migrations
                     b.HasIndex("CatalogItemId");
 
                     b.HasIndex("JobId");
+
+                    b.HasIndex("ReviewedByAdminId");
+
+                    b.HasIndex("JobId", "CatalogItemId")
+                        .IsUnique();
 
                     b.ToTable("JobUsedEquipments");
                 });
@@ -271,6 +426,9 @@ namespace ElectroSL_Backend.Migrations
                         .HasColumnType("int");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("TransactionId"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<decimal>("ElectricianEarning")
                         .HasPrecision(18, 2)
@@ -287,9 +445,6 @@ namespace ElectroSL_Backend.Migrations
                     b.Property<decimal>("PlatformCommission")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("ProcessedAt")
-                        .HasColumnType("datetime(6)");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
@@ -368,6 +523,51 @@ namespace ElectroSL_Backend.Migrations
                     b.ToTable("SimulatorResults");
                 });
 
+            modelBuilder.Entity("ElectroSL_Backend.Models.TechnicianAuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("AdminId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ElectricianProfileId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("PreviousStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdminId");
+
+                    b.HasIndex("ElectricianProfileId");
+
+                    b.ToTable("TechnicianAuditLogs");
+                });
+
             modelBuilder.Entity("ElectroSL_Backend.Models.User", b =>
                 {
                     b.Property<int>("UserId")
@@ -376,13 +576,34 @@ namespace ElectroSL_Backend.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("UserId"));
 
+                    b.Property<string>("AccountStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)")
+                        .HasDefaultValue("Active");
+
+                    b.Property<int>("ConcurrencyVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeactivatedAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("varchar(150)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
 
                     b.Property<bool>("IsPhoneVerified")
                         .HasColumnType("tinyint(1)");
@@ -413,10 +634,23 @@ namespace ElectroSL_Backend.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("varchar(30)");
 
+                    b.Property<DateTime?>("SuspendedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("SuspensionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
                     b.HasKey("UserId");
+
+                    b.HasIndex("AccountStatus");
 
                     b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Role");
 
                     b.ToTable("Users");
                 });
@@ -432,8 +666,37 @@ namespace ElectroSL_Backend.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ElectroSL_Backend.Models.EquipmentPriceHistory", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.EquipmentCatalog", "EquipmentCatalog")
+                        .WithMany("PriceHistories")
+                        .HasForeignKey("CatalogItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ElectroSL_Backend.Models.User", "ChangedByAdmin")
+                        .WithMany("PriceChangeActions")
+                        .HasForeignKey("ChangedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ChangedByAdmin");
+
+                    b.Navigation("EquipmentCatalog");
+                });
+
             modelBuilder.Entity("ElectroSL_Backend.Models.Job", b =>
                 {
+                    b.HasOne("ElectroSL_Backend.Models.User", "AssignedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("AssignedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ElectroSL_Backend.Models.User", "CancelledByUser")
+                        .WithMany()
+                        .HasForeignKey("CancelledByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ElectroSL_Backend.Models.User", "Customer")
                         .WithMany("CustomerJobs")
                         .HasForeignKey("CustomerId")
@@ -444,6 +707,10 @@ namespace ElectroSL_Backend.Migrations
                         .WithMany("AssignedJobs")
                         .HasForeignKey("ElectricianId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AssignedByAdmin");
+
+                    b.Navigation("CancelledByUser");
 
                     b.Navigation("Customer");
 
@@ -482,9 +749,16 @@ namespace ElectroSL_Backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("ElectroSL_Backend.Models.User", "ReviewedByAdmin")
+                        .WithMany("ReviewedEquipments")
+                        .HasForeignKey("ReviewedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("EquipmentCatalog");
 
                     b.Navigation("Job");
+
+                    b.Navigation("ReviewedByAdmin");
                 });
 
             modelBuilder.Entity("ElectroSL_Backend.Models.PaymentTransaction", b =>
@@ -528,9 +802,35 @@ namespace ElectroSL_Backend.Migrations
                     b.Navigation("Electrician");
                 });
 
+            modelBuilder.Entity("ElectroSL_Backend.Models.TechnicianAuditLog", b =>
+                {
+                    b.HasOne("ElectroSL_Backend.Models.User", "Admin")
+                        .WithMany("AdminAuditActions")
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ElectroSL_Backend.Models.ElectricianProfile", "ElectricianProfile")
+                        .WithMany("AuditLogs")
+                        .HasForeignKey("ElectricianProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
+
+                    b.Navigation("ElectricianProfile");
+                });
+
+            modelBuilder.Entity("ElectroSL_Backend.Models.ElectricianProfile", b =>
+                {
+                    b.Navigation("AuditLogs");
+                });
+
             modelBuilder.Entity("ElectroSL_Backend.Models.EquipmentCatalog", b =>
                 {
                     b.Navigation("JobUsedEquipments");
+
+                    b.Navigation("PriceHistories");
                 });
 
             modelBuilder.Entity("ElectroSL_Backend.Models.Job", b =>
@@ -546,6 +846,8 @@ namespace ElectroSL_Backend.Migrations
 
             modelBuilder.Entity("ElectroSL_Backend.Models.User", b =>
                 {
+                    b.Navigation("AdminAuditActions");
+
                     b.Navigation("AssignedJobs");
 
                     b.Navigation("CustomerJobs");
@@ -553,6 +855,10 @@ namespace ElectroSL_Backend.Migrations
                     b.Navigation("ElectricianProfile");
 
                     b.Navigation("JobBids");
+
+                    b.Navigation("PriceChangeActions");
+
+                    b.Navigation("ReviewedEquipments");
 
                     b.Navigation("ReviewsReceived");
 
