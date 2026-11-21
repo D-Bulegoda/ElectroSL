@@ -30,9 +30,14 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
-        if (dto == null || string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+        if (dto == null ||
+            string.IsNullOrWhiteSpace(dto.Email) ||
+            string.IsNullOrWhiteSpace(dto.Password))
         {
-            return BadRequest(new { message = "Email and password are required." });
+            return BadRequest(new
+            {
+                message = "Email and password are required."
+            });
         }
 
         try
@@ -41,7 +46,10 @@ public class AuthController : ControllerBase
 
             if (authResult == null)
             {
-                return Unauthorized(new { message = "Invalid email or password." });
+                return Unauthorized(new
+                {
+                    message = "Invalid email or password."
+                });
             }
 
             return Ok(authResult);
@@ -60,18 +68,32 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
-        if (dto == null || string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+        if (dto == null ||
+            string.IsNullOrWhiteSpace(dto.Email) ||
+            string.IsNullOrWhiteSpace(dto.Password))
         {
-            return BadRequest(new { message = "Name, email and password are required." });
+            return BadRequest(new
+            {
+                message = "Name, email and password are required."
+            });
         }
 
         var user = await _authService.RegisterUserAsync(dto);
+
         if (user == null)
         {
-            return BadRequest(new { message = "A user with this email already exists." });
+            return BadRequest(new
+            {
+                message = "A user with this email already exists."
+            });
         }
 
-        return Ok(new { success = true, userId = user.UserId, message = "Registration successful." });
+        return Ok(new
+        {
+            success = true,
+            userId = user.UserId,
+            message = "Registration successful."
+        });
     }
 
     [HttpPost("register-electrician")]
@@ -86,16 +108,27 @@ public class AuthController : ControllerBase
         [FromForm] IFormFile? certificate,
         [FromForm] IFormFile? nicDocument)
     {
-        if (string.IsNullOrWhiteSpace(fullName) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrWhiteSpace(fullName) ||
+            string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password))
         {
-            return BadRequest(new { message = "Full name, email and password are required." });
+            return BadRequest(new
+            {
+                message = "Full name, email and password are required."
+            });
         }
 
         var normalizedEmail = email.Trim().ToLowerInvariant();
-        bool exists = await _context.Users.AnyAsync(u => u.Email.ToLower() == normalizedEmail);
+
+        var exists = await _context.Users
+            .AnyAsync(u => u.Email.ToLower() == normalizedEmail);
+
         if (exists)
         {
-            return BadRequest(new { message = "An account with this email address already exists." });
+            return BadRequest(new
+            {
+                message = "An account with this email address already exists."
+            });
         }
 
         string nvqStorageKey = string.Empty;
@@ -105,12 +138,18 @@ public class AuthController : ControllerBase
         {
             if (certificate != null && certificate.Length > 0)
             {
-                nvqStorageKey = await _documentStorageService.SaveDocumentAsync(certificate, "nvq");
+                nvqStorageKey =
+                    await _documentStorageService.SaveDocumentAsync(
+                        certificate,
+                        "nvq");
             }
 
             if (nicDocument != null && nicDocument.Length > 0)
             {
-                nicStorageKey = await _documentStorageService.SaveDocumentAsync(nicDocument, "nic");
+                nicStorageKey =
+                    await _documentStorageService.SaveDocumentAsync(
+                        nicDocument,
+                        "nic");
             }
         }
         catch (InvalidOperationException ex)
@@ -119,7 +158,10 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = $"Document processing failed: {ex.Message}" });
+            return StatusCode(500, new
+            {
+                message = $"Document processing failed: {ex.Message}"
+            });
         }
 
         var user = new User
@@ -152,7 +194,8 @@ public class AuthController : ControllerBase
             success = true,
             userId = user.UserId,
             profileId = profile.ProfileId,
-            message = "Electrician registration submitted successfully. Application is pending admin review."
+            message =
+                "Electrician registration submitted successfully. Application is pending admin review."
         });
     }
 
@@ -161,75 +204,26 @@ public class AuthController : ControllerBase
     {
         if (dto == null || string.IsNullOrWhiteSpace(dto.OtpCode))
         {
-            return BadRequest(new { message = "OTP code is required." });
-        }
-
-        var success = await _authService.VerifyOtpAsync(1, dto.OtpCode);
-        if (!success)
-        {
-            return BadRequest(new { message = "Invalid or expired OTP." });
-        }
-
-        return Ok(new { success = true, message = "OTP verified successfully." });
-    }
-}
-using System.Threading.Tasks;
-using ElectroSL_Backend.Data;
-using ElectroSL_Backend.DTOs.Auth;
-using ElectroSL_Backend.Services.Interfaces;
-using ElectroSL_Backend.Utilities;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-
-namespace ElectroSL_Backend.Controllers
-{
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AuthController : ControllerBase
-    {
-        private readonly IAuthService _authService;
-        private readonly ElectroSLDbContext _context;
-        private readonly IConfiguration _configuration;
-
-        public AuthController(IAuthService authService, ElectroSLDbContext context, IConfiguration configuration)
-        {
-            _authService = authService;
-            _context = context;
-            _configuration = configuration;
-        }
-
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto dto)
-        {
-            if (string.IsNullOrWhiteSpace(dto.Email))
+            return BadRequest(new
             {
-                return BadRequest(new { message = "Email is required." });
-            }
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower());
-            string role = user?.Role ?? (dto.Email.Contains("admin", System.StringComparison.OrdinalIgnoreCase) ? "Admin" : "Electrician");
-            int userId = user?.UserId ?? 1;
-
-            var secretKey = _configuration["JwtSettings:SecretKey"] ?? "ElectroSL_Super_Secret_Key_Change_This_In_Production";
-            var token = JwtTokenGenerator.GenerateToken(userId, role, secretKey);
-
-            return Ok(new
-            {
-                success = true,
-                token,
-                role,
-                userId,
-                email = dto.Email,
-                name = user?.Name ?? (role == "Admin" ? "System Administrator" : "Electrician User")
+                message = "OTP code is required."
             });
         }
 
-        [HttpPost("verify-otp")]
-        public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
+        var success = await _authService.VerifyOtpAsync(1, dto.OtpCode);
+
+        if (!success)
         {
-            var isValid = await _authService.VerifyOtpAsync(dto.UserId, dto.OtpCode);
-            return Ok(new { success = isValid });
+            return BadRequest(new
+            {
+                message = "Invalid or expired OTP."
+            });
         }
+
+        return Ok(new
+        {
+            success = true,
+            message = "OTP verified successfully."
+        });
     }
 }
