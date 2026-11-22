@@ -1,0 +1,39 @@
+
+name: Generate ElectroSL Migration SQL
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-sql:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install EF Core tools
+        run: dotnet tool install --global dotnet-ef --version 8.0.10
+
+      - name: Restore backend
+        run: dotnet restore ElectroSL-Backend/ElectroSL-Backend.csproj
+
+      - name: Build backend
+        run: dotnet build ElectroSL-Backend/ElectroSL-Backend.csproj --no-restore
+
+      - name: Generate migration SQL
+        run: dotnet ef migrations script 0 20261118132422_AddSimulatorConfigurationFields --project ElectroSL-Backend/ElectroSL-Backend.csproj --startup-project ElectroSL-Backend/ElectroSL-Backend.csproj --output ElectroSL_Migrations.sql
+
+      - name: Upload SQL file
+        uses: actions/upload-artifact@v4
+        with:
+          name: ElectroSL-Migration-SQL
+          path: ElectroSL_Migrations.sql
