@@ -31,6 +31,15 @@ public class TechnicianPayoutRecord
     [MaxLength(500)]
     public string AdminNotes { get; set; } = string.Empty;
 
+    public bool IsReversed { get; set; } = false;
+
+    public DateTime? ReversedAtUtc { get; set; }
+
+    [MaxLength(500)]
+    public string? ReversalReason { get; set; }
+
+    public long? ReversalTransactionId { get; set; }
+
     // Navigation Properties
     [ForeignKey("ElectricianProfileId")]
     public virtual ElectricianProfile ElectricianProfile { get; set; } = null!;

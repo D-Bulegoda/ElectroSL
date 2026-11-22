@@ -52,16 +52,16 @@ export default function CheckoutPayment() {
     }
 
     const tier = paymentMethod === 'Cash' 
-      ? summary.pricingOptions?.cashSplit 
+      ? (summary.pricingOptions?.cash || summary.pricingOptions?.cashSplit)
       : summary.pricingOptions?.fullDigital;
 
     const onlineAmount = tier ? tier.customerPaysOnline : summary.grossJobValue;
     const methodDescription = paymentMethod === 'Cash' 
-      ? `CashSplit (LKR ${onlineAmount.toLocaleString()} platform fee online + LKR ${tier?.customerPaysCash.toLocaleString()} cash on-site)` 
-      : `FullDigital (LKR ${onlineAmount.toLocaleString()} full amount online)`;
+      ? `Cash Payment (LKR ${summary.grossJobValue.toLocaleString()} directly to technician in cash)` 
+      : `Online Payment (LKR ${onlineAmount.toLocaleString()} via Card)`;
 
     const confirmed = window.confirm(
-      `Confirm payment for Job #${summary.jobId} using ${methodDescription}?`
+      `Confirm payment selection for Job #${summary.jobId} using ${methodDescription}?`
     );
 
     if (!confirmed) return;
@@ -70,7 +70,7 @@ export default function CheckoutPayment() {
     setMessage('');
 
     try {
-      const canonicalMethod = paymentMethod === 'Cash' ? 'CashSplit' : 'FullDigital';
+      const canonicalMethod = paymentMethod === 'Cash' ? 'Cash' : 'FullDigital';
       const result = await processPayment({
         jobId: summary.jobId,
         paymentMethod: canonicalMethod,
@@ -87,7 +87,7 @@ export default function CheckoutPayment() {
   };
 
   const selectedTier = paymentMethod === 'Cash'
-    ? summary?.pricingOptions?.cashSplit
+    ? (summary?.pricingOptions?.cash || summary?.pricingOptions?.cashSplit)
     : summary?.pricingOptions?.fullDigital;
 
   return (
@@ -271,9 +271,9 @@ export default function CheckoutPayment() {
                   disabled={paymentStatus !== 'Pending' || submitting}
                 />
                 <div style={{ flex: 1 }}>
-                  <strong>Cash on Delivery (CashSplit)</strong>
+                  <strong>Cash on Delivery (Direct Payment)</strong>
                   <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-                    Pay 15% platform fee (LKR {Number(summary.pricingOptions.cashSplit.customerPaysOnline).toLocaleString()}) online now. Pay the remaining 85% (LKR {Number(summary.pricingOptions.cashSplit.customerPaysCash).toLocaleString()}) directly to the technician in cash upon work completion.
+                    Pay 100% (LKR {Number(summary.grossJobValue).toLocaleString()}) directly to technician in cash upon work completion. 15% platform commission is charged to technician wallet.
                   </p>
                 </div>
               </label>
@@ -307,8 +307,8 @@ export default function CheckoutPayment() {
                 )}
                 <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#64748b' }}>
                   {paymentMethod === 'Cash'
-                    ? '✓ No technician wallet debit or future commission debt is created.'
-                    : '✓ Technician earnings credited atomically to wallet upon successful payment.'}
+                    ? '✓ Direct cash payment to technician on-site. 15% platform commission is debited to technician wallet.'
+                    : '✓ Online payment recorded. 85% net earnings credited to technician wallet.'}
                 </p>
               </div>
             )}
@@ -344,7 +344,7 @@ export default function CheckoutPayment() {
                   ✅ Payment Confirmed (Tx #{receipt.transactionId})
                 </div>
                 <div>Amount Paid Online: <strong>LKR {Number(receipt.customerPaidOnline).toFixed(2)}</strong></div>
-                {receipt.paymentMethod === 'CashSplit' && (
+                {(receipt.paymentMethod === 'Cash' || receipt.paymentMethod === 'CashSplit') && (
                   <div style={{ color: '#047857', marginTop: '4px' }}>
                     Cash Payable to Electrician: <strong>LKR {Number(receipt.customerDirectCash).toFixed(2)}</strong>
                   </div>

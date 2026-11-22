@@ -12,6 +12,7 @@ namespace ElectroSL_Backend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/payment")]
 [Authorize(Roles = "Customer")]
 public class MockPaymentController : ControllerBase
 {

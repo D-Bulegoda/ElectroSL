@@ -63,9 +63,12 @@ public class PaymentMethodDistributionDto
 {
     public int FullDigitalCount { get; set; }
     public decimal FullDigitalGmv { get; set; }
+    public int CashCount { get; set; }
+    public decimal CashGmv { get; set; }
     public int CashSplitCount { get; set; }
     public decimal CashSplitGmv { get; set; }
     public decimal FullDigitalPercentage { get; set; }
+    public decimal CashPercentage { get; set; }
     public decimal CashSplitPercentage { get; set; }
 }
 

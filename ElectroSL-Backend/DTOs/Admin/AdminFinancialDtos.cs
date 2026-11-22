@@ -36,9 +36,24 @@ public class AdminFinancialSummaryDto
     public decimal TotalElectricianEarnings { get; set; }
 
     /// <summary>
-    /// Current outstanding platform payout liability: sum of all active technician virtual wallet balances.
+    /// Current outstanding platform payout liability: sum of all active technician virtual wallet balances (> 0).
     /// </summary>
     public decimal OutstandingWalletLiability { get; set; }
+
+    /// <summary>
+    /// Total outstanding commission debt owed by technicians across all cash jobs.
+    /// </summary>
+    public decimal TotalOutstandingCommissionDebt { get; set; }
+
+    /// <summary>
+    /// Total withdrawable wallet liabilities after reserving outstanding commission debt.
+    /// </summary>
+    public decimal TotalWithdrawableLiability { get; set; }
+
+    /// <summary>
+    /// Total negative wallet balances across all indebted technicians.
+    /// </summary>
+    public decimal TotalNegativeWalletBalances { get; set; }
 
     /// <summary>
     /// Total gross out-of-band bank payouts recorded by administrators.
@@ -115,6 +130,9 @@ public class AdminWalletTransactionDto
     public decimal Amount { get; set; }
     public decimal BalanceBefore { get; set; }
     public decimal BalanceAfter { get; set; }
+    public decimal CommissionDebtBefore { get; set; }
+    public decimal CommissionDebtAfter { get; set; }
+    public decimal CommissionDebtRecovered { get; set; }
     public WalletTransactionType TransactionType { get; set; }
     public string TransactionTypeName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -153,6 +171,8 @@ public class TechnicianWalletDetailDto
     public bool IsApprovedByAdmin { get; set; }
     public bool IsOnline { get; set; }
     public decimal CurrentWalletBalance { get; set; }
+    public decimal OutstandingCommissionDebt { get; set; }
+    public decimal AvailablePayoutBalance { get; set; }
     public decimal LifetimeDigitalEarnings { get; set; }
     public decimal LifetimeGrossPayouts { get; set; }
     public decimal LifetimeReversedPayouts { get; set; }

@@ -11,7 +11,8 @@ public enum WalletTransactionType
     PayoutDisbursed = 3,         // Administrative bank payout recorded
     PayoutReversal = 4,          // Reversal of bounced/failed bank payout
     AdminAdjustmentCredit = 5,   // Audited administrative balance credit
-    AdminAdjustmentDebit = 6     // Audited administrative balance debit (capped at available balance)
+    AdminAdjustmentDebit = 6,    // Audited administrative balance debit (capped at available balance)
+    CashJobCommissionDebit = 7   // 15% platform commission debit owed from cash job
 }
 
 public class WalletTransaction
@@ -35,6 +36,15 @@ public class WalletTransaction
 
     [Column(TypeName = "decimal(18,2)")]
     public decimal BalanceAfter { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal CommissionDebtBefore { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal CommissionDebtAfter { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal CommissionDebtRecovered { get; set; }
 
     public WalletTransactionType TransactionType { get; set; }
 

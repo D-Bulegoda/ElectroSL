@@ -13,8 +13,14 @@ export const adminService = {
     return fetchWithAuth(`/admin/applications/${profileId}`, { method: 'GET' });
   },
 
-  approveApplication: async (profileId) => {
-    return fetchWithAuth(`/admin/applications/${profileId}/approve`, { method: 'PUT' });
+  approveApplication: async (profileId, payload = {}) => {
+    return fetchWithAuth(`/admin/applications/${profileId}/approve`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        technicalSkillRating: Number(payload.technicalSkillRating),
+        assessmentNote: payload.assessmentNote || null
+      })
+    });
   },
 
   rejectApplication: async (profileId, reason) => {
@@ -24,10 +30,24 @@ export const adminService = {
     });
   },
 
-  approveWithOverride: async (profileId, explanation) => {
+  approveWithOverride: async (profileId, explanation, payload = {}) => {
     return fetchWithAuth(`/admin/applications/${profileId}/approve-override`, {
       method: 'PUT',
-      body: JSON.stringify({ explanation })
+      body: JSON.stringify({
+        explanation,
+        technicalSkillRating: Number(payload.technicalSkillRating || 3),
+        assessmentNote: payload.assessmentNote || null
+      })
+    });
+  },
+
+  updateTechnicalSkillRating: async (profileId, { technicalSkillRating, assessmentNote }) => {
+    return fetchWithAuth(`/admin/applications/${profileId}/skill-rating`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        technicalSkillRating: Number(technicalSkillRating),
+        assessmentNote: assessmentNote || null
+      })
     });
   },
 

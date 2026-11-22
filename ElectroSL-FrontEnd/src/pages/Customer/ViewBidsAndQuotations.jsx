@@ -9,6 +9,8 @@ const sampleBids = [
     experience: '5 years experience',
     rating: 4.8,
     reviews: 42,
+    technicalSkillRating: 4,
+    technicalSkillAssessmentNote: 'Verified NVQ Level 4 certificate credentials; demonstrated strong wiring safety proficiency.',
     price: 4500,
     duration: '2 hours',
     description: 'Inspection and repair of the electrical wiring.',
@@ -20,6 +22,8 @@ const sampleBids = [
     experience: '8 years experience',
     rating: 4.9,
     reviews: 65,
+    technicalSkillRating: 5,
+    technicalSkillAssessmentNote: 'Senior Master Electrician with high-voltage industrial qualification.',
     price: 5200,
     duration: '1.5 hours',
     description: 'Complete wiring inspection and necessary repairs.',
@@ -31,6 +35,8 @@ const sampleBids = [
     experience: '3 years experience',
     rating: 4.5,
     reviews: 28,
+    technicalSkillRating: null, // Not yet assessed
+    technicalSkillAssessmentNote: null,
     price: 3800,
     duration: '3 hours',
     description: 'Basic electrical troubleshooting and repair.',
@@ -126,7 +132,40 @@ export default function ViewBidsAndQuotations() {
 
             <div className="bid-rating">
               ⭐ {bid.rating} / 5
-              <span>({bid.reviews} reviews)</span>
+              <span>({bid.reviews} customer reviews)</span>
+            </div>
+
+            {/* Technical Skill Level (Admin Assessed Skill - Distinct from customer reviews) */}
+            <div
+              className="bid-technical-skill"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                backgroundColor: '#f1f5f9',
+                padding: '0.35rem 0.65rem',
+                borderRadius: '4px',
+                fontSize: '0.8125rem',
+                border: '1px solid #e2e8f0',
+                margin: '0.4rem 0'
+              }}
+            >
+              <span style={{ fontWeight: 600, color: '#475569' }}>Technical Skill Level:</span>
+              {bid.technicalSkillRating ? (
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                  {'★'.repeat(bid.technicalSkillRating)}{'☆'.repeat(5 - bid.technicalSkillRating)} Level {bid.technicalSkillRating} / 5{' '}
+                  <span style={{ fontWeight: 500, fontSize: '0.72rem', color: '#64748b' }}>
+                    (Admin Assessed Skill)
+                  </span>
+                </span>
+              ) : (
+                <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>
+                  Not yet assessed{' '}
+                  <span style={{ fontWeight: 400, fontSize: '0.72rem', color: '#94a3b8' }}>
+                    (Admin Assessed Skill)
+                  </span>
+                </span>
+              )}
             </div>
 
             <p className="bid-description">

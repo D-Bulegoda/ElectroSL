@@ -118,6 +118,10 @@ namespace ElectroSL_Backend.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<decimal>("OutstandingCommissionDebt")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("RejectionReason")
                         .HasColumnType("longtext");
 
@@ -132,6 +136,19 @@ namespace ElectroSL_Backend.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("TechnicalSkillAssessmentNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime?>("TechnicalSkillRatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("TechnicalSkillRatedByAdminId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TechnicalSkillRating")
+                        .HasColumnType("int");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -775,8 +792,21 @@ namespace ElectroSL_Backend.Migrations
                     b.Property<int>("ElectricianProfileId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IsReversed")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<int>("RecordedByAdminId")
                         .HasColumnType("int");
+
+                    b.Property<string>("ReversalReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<long?>("ReversalTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ReversedAtUtc")
+                        .HasColumnType("datetime(6)");
 
                     b.HasKey("PayoutId");
 
@@ -893,6 +923,18 @@ namespace ElectroSL_Backend.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("BalanceBefore")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("CommissionDebtAfter")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("CommissionDebtBefore")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("CommissionDebtRecovered")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 

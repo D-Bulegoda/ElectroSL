@@ -4,6 +4,8 @@ import adminService from '../../services/adminService';
 import StatusBadge from '../../components/admin/StatusBadge';
 import DocumentViewer from '../../components/admin/DocumentViewer';
 import RejectionModal from '../../components/admin/RejectionModal';
+import TechnicianApprovalModal from '../../components/admin/TechnicianApprovalModal';
+import UpdateSkillRatingModal from '../../components/admin/UpdateSkillRatingModal';
 import ApplicationDetail from './ApplicationDetail';
 import { formatDateTime } from '../../utils/formattingHelpers';
 import {
@@ -37,6 +39,8 @@ export default function TechnicianManagement({ defaultTab = 'pending' }) {
   // Modals state
   const [docModal, setDocModal] = useState({ isOpen: false, url: '', type: '', title: '' });
   const [rejectModal, setRejectModal] = useState({ isOpen: false, profileId: null, name: '' });
+  const [approveModal, setApproveModal] = useState({ isOpen: false, profileId: null, name: '' });
+  const [skillModal, setSkillModal] = useState({ isOpen: false, profileId: null, name: '', currentRating: null, currentNote: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load data for the active tab
@@ -81,18 +85,33 @@ export default function TechnicianManagement({ defaultTab = 'pending' }) {
     setSelectedProfileId(null);
   };
 
-  const handleApprove = async (profileId, name) => {
-    if (!window.confirm(`Confirm accreditation approval for ${name}? This permits them to bid on jobs.`)) {
-      return;
-    }
+  const handleApprove = (profileId, name) => {
+    setApproveModal({ isOpen: true, profileId, name });
+  };
 
+  const handleApprovalConfirm = async ({ technicalSkillRating, assessmentNote }) => {
     try {
       setIsSubmitting(true);
-      await adminService.approveApplication(profileId);
-      setActionMessage({ type: 'success', text: `Technician ${name} has been approved successfully.` });
+      await adminService.approveApplication(approveModal.profileId, { technicalSkillRating, assessmentNote });
+      setActionMessage({ type: 'success', text: `Technician ${approveModal.name} has been approved with Technical Skill Level ${technicalSkillRating}/5.` });
+      setApproveModal({ isOpen: false, profileId: null, name: '' });
       fetchData();
     } catch (err) {
       setActionMessage({ type: 'error', text: err.message || 'Approval failed. Verify prerequisites.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateSkillConfirm = async ({ technicalSkillRating, assessmentNote }) => {
+    try {
+      setIsSubmitting(true);
+      await adminService.updateTechnicalSkillRating(skillModal.profileId, { technicalSkillRating, assessmentNote });
+      setActionMessage({ type: 'success', text: `Technical skill rating for ${skillModal.name} updated to Level ${technicalSkillRating}/5.` });
+      setSkillModal({ isOpen: false, profileId: null, name: '', currentRating: null, currentNote: '' });
+      fetchData();
+    } catch (err) {
+      setActionMessage({ type: 'error', text: err.message || 'Failed to update skill rating.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -327,6 +346,7 @@ export default function TechnicianManagement({ defaultTab = 'pending' }) {
               <th>NVQ Level 4</th>
               <th>NIC Verified</th>
               <th>Simulator Score</th>
+              <th>Technical Skill</th>
               <th>Status</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
@@ -334,13 +354,13 @@ export default function TechnicianManagement({ defaultTab = 'pending' }) {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
                   Loading {activeTab} technician records...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
                   {search ? 'No matching technicians found.' : `No ${activeTab} technician applications at this time.`}
                 </td>
               </tr>
@@ -400,6 +420,18 @@ export default function TechnicianManagement({ defaultTab = 'pending' }) {
                     )}
                   </td>
                   <td>
+                    {tech.technicalSkillRating ? (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} title={`Admin Assessed: Level ${tech.technicalSkillRating}/5`}>
+                        <span style={{ color: '#f59e0b', fontSize: '0.9rem' }}>★</span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0f172a' }}>Level {tech.technicalSkillRating} / 5</span>
+                      </div>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                        Not yet assessed
+                      </span>
+                    )}
+                  </td>
+                  <td>
                     <StatusBadge status={tech.verificationStatus} />
                   </td>
                   <td style={{ textAlign: 'right' }}>
@@ -413,6 +445,23 @@ export default function TechnicianManagement({ defaultTab = 'pending' }) {
                         <EyeIcon size={13} />
                         <span>Dossier</span>
                       </button>
+
+                      {activeTab === 'approved' && (
+                        <button
+                          type="button"
+                          onClick={() => setSkillModal({
+                            isOpen: true,
+                            profileId: tech.profileId,
+                            name: tech.name,
+                            currentRating: tech.technicalSkillRating,
+                            currentNote: ''
+                          })}
+                          className="admin-btn admin-btn-secondary admin-btn-sm"
+                          title="Update Technical Skill Level"
+                        >
+                          <span>⭐ Rate / Update</span>
+                        </button>
+                      )}
 
                       {activeTab === 'pending' && (
                         <>
@@ -464,6 +513,26 @@ export default function TechnicianManagement({ defaultTab = 'pending' }) {
         onClose={() => setRejectModal({ isOpen: false, profileId: null, name: '' })}
         onConfirm={handleRejectConfirm}
         applicantName={rejectModal.name}
+        isSubmitting={isSubmitting}
+      />
+
+      {/* Technician Approval & Skill Rating Modal */}
+      <TechnicianApprovalModal
+        isOpen={approveModal.isOpen}
+        onClose={() => setApproveModal({ isOpen: false, profileId: null, name: '' })}
+        onConfirm={handleApprovalConfirm}
+        technicianName={approveModal.name}
+        isSubmitting={isSubmitting}
+      />
+
+      {/* Update Technical Skill Rating Modal */}
+      <UpdateSkillRatingModal
+        isOpen={skillModal.isOpen}
+        onClose={() => setSkillModal({ isOpen: false, profileId: null, name: '', currentRating: null, currentNote: '' })}
+        onConfirm={handleUpdateSkillConfirm}
+        technicianName={skillModal.name}
+        currentRating={skillModal.currentRating}
+        currentNote={skillModal.currentNote}
         isSubmitting={isSubmitting}
       />
     </div>
