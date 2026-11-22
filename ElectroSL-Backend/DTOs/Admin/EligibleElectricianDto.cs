@@ -19,5 +19,7 @@ public class EligibleElectricianDto
     public double AverageRating { get; set; }
     public int CompletedJobsCount { get; set; }
     public decimal AppWalletBalance { get; set; }
+    public int? TechnicalSkillRating { get; set; }
+    public string? TechnicalSkillAssessmentNote { get; set; }
 }
 

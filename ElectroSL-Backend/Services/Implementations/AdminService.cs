@@ -61,6 +61,7 @@ public class AdminService : IAdminService
             NvqCertificateUrl = x.profile.NvqCertificateUrl ?? string.Empty,
             NicDocumentUrl = x.profile.NicDocumentUrl ?? string.Empty,
             SimulatorPassed = x.LatestSimulatorResult != null && x.LatestSimulatorResult.IsPassed,
+            TechnicalSkillRating = x.profile.TechnicalSkillRating,
             CreatedAt = x.user.CreatedAt
         }).ToList();
     }
@@ -124,12 +125,17 @@ public class AdminService : IAdminService
             ReviewedByAdminId = profile.ReviewedByAdminId,
             ReviewedAt = profile.ReviewedAt,
 
+            TechnicalSkillRating = profile.TechnicalSkillRating,
+            TechnicalSkillAssessmentNote = profile.TechnicalSkillAssessmentNote,
+            TechnicalSkillRatedAtUtc = profile.TechnicalSkillRatedAtUtc,
+            TechnicalSkillRatedByAdminId = profile.TechnicalSkillRatedByAdminId,
+
             WalletBalance = profile.AppWalletBalance,
             AuditLogs = auditLogs
         };
     }
 
-    public async Task<ReviewActionResult> ApproveApplicationAsync(int profileId, int adminUserId)
+    public async Task<ReviewActionResult> ApproveApplicationAsync(int profileId, int adminUserId, int technicalSkillRating, string? assessmentNote = null)
     {
         var profile = await _context.ElectricianProfiles.FirstOrDefaultAsync(p => p.ProfileId == profileId);
         if (profile == null)
@@ -146,6 +152,11 @@ public class AdminService : IAdminService
         if (profile.VerificationStatus != "Pending")
         {
             return ReviewActionResult.Conflict($"Conflict: Application is currently in '{profile.VerificationStatus}' status and cannot be approved directly.", profile.VerificationStatus);
+        }
+
+        if (technicalSkillRating < 1 || technicalSkillRating > 5)
+        {
+            return ReviewActionResult.Invalid("A mandatory technical skill rating between 1 and 5 stars must be assigned before approving an electrician.");
         }
 
         // Check verification prerequisites: NVQ and NIC uploaded, physical files exist, and simulator passed
@@ -174,6 +185,12 @@ public class AdminService : IAdminService
         profile.ReviewedByAdminId = adminUserId;
         profile.ReviewedAt = DateTime.UtcNow;
 
+        // Assign Technical Skill Rating
+        profile.TechnicalSkillRating = technicalSkillRating;
+        profile.TechnicalSkillAssessmentNote = string.IsNullOrWhiteSpace(assessmentNote) ? null : assessmentNote.Trim();
+        profile.TechnicalSkillRatedAtUtc = DateTime.UtcNow;
+        profile.TechnicalSkillRatedByAdminId = adminUserId;
+
         var auditLog = new TechnicianAuditLog
         {
             ElectricianProfileId = profile.ProfileId,
@@ -181,7 +198,7 @@ public class AdminService : IAdminService
             Action = "Approved",
             PreviousStatus = previousStatus,
             NewStatus = "Approved",
-            Reason = "Standard accreditation approved. Verified physical NVQ Level 4 certificate, NIC identity document, and passed circuit simulator assessment.",
+            Reason = $"Standard accreditation approved. Technical skill level assigned: Level {technicalSkillRating}/5.{(string.IsNullOrWhiteSpace(assessmentNote) ? "" : $" Assessment Note: {assessmentNote.Trim()}.")} Verified physical NVQ Level 4 certificate, NIC identity document, and passed circuit simulator assessment.",
             TimestampUtc = DateTime.UtcNow
         };
         _context.TechnicianAuditLogs.Add(auditLog);
@@ -191,15 +208,15 @@ public class AdminService : IAdminService
             "TechnicianApproved",
             "ElectricianProfile",
             profile.ProfileId.ToString(),
-            $"Approved technician application for Profile #{profile.ProfileId}",
+            $"Approved technician application for Profile #{profile.ProfileId} with Technical Skill Level {technicalSkillRating}/5",
             oldValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = previousStatus }),
-            newValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = "Approved", IsApprovedByAdmin = true }));
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = "Approved", IsApprovedByAdmin = true, TechnicalSkillRating = technicalSkillRating, AssessmentNote = profile.TechnicalSkillAssessmentNote }));
         _context.AdminAuditLogs.Add(adminAudit);
 
         try
         {
             await _context.SaveChangesAsync();
-            return ReviewActionResult.Ok($"Technician #{profileId} has been successfully approved.", "Approved");
+            return ReviewActionResult.Ok($"Technician #{profileId} has been successfully approved with Technical Skill Level {technicalSkillRating}/5.", "Approved");
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -207,7 +224,7 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task<ReviewActionResult> ApproveApplicationWithOverrideAsync(int profileId, string overrideReason, int adminUserId)
+    public async Task<ReviewActionResult> ApproveApplicationWithOverrideAsync(int profileId, string overrideReason, int adminUserId, int technicalSkillRating = 3, string? assessmentNote = null)
     {
         var profile = await _context.ElectricianProfiles.FirstOrDefaultAsync(p => p.ProfileId == profileId);
         if (profile == null)
@@ -224,6 +241,11 @@ public class AdminService : IAdminService
         if (profile.VerificationStatus != "Pending")
         {
             return ReviewActionResult.Conflict($"Conflict: Application is currently in '{profile.VerificationStatus}' status and cannot be approved directly.", profile.VerificationStatus);
+        }
+
+        if (technicalSkillRating < 1 || technicalSkillRating > 5)
+        {
+            return ReviewActionResult.Invalid("A mandatory technical skill rating between 1 and 5 stars must be assigned before approving an electrician.");
         }
 
         if (string.IsNullOrWhiteSpace(overrideReason) || overrideReason.Trim().Length < 10)
@@ -247,6 +269,12 @@ public class AdminService : IAdminService
         profile.ReviewedByAdminId = adminUserId;
         profile.ReviewedAt = DateTime.UtcNow;
 
+        // Assign Technical Skill Rating
+        profile.TechnicalSkillRating = technicalSkillRating;
+        profile.TechnicalSkillAssessmentNote = string.IsNullOrWhiteSpace(assessmentNote) ? null : assessmentNote.Trim();
+        profile.TechnicalSkillRatedAtUtc = DateTime.UtcNow;
+        profile.TechnicalSkillRatedByAdminId = adminUserId;
+
         var auditLog = new TechnicianAuditLog
         {
             ElectricianProfileId = profile.ProfileId,
@@ -254,7 +282,7 @@ public class AdminService : IAdminService
             Action = "SimulatorOverrideApproved",
             PreviousStatus = previousStatus,
             NewStatus = "Approved",
-            Reason = $"[SIMULATOR OVERRIDE] {overrideReason.Trim()}",
+            Reason = $"[SIMULATOR OVERRIDE] Technical skill level: Level {technicalSkillRating}/5. {overrideReason.Trim()}{(string.IsNullOrWhiteSpace(assessmentNote) ? "" : $" Assessment Note: {assessmentNote.Trim()}")}",
             TimestampUtc = DateTime.UtcNow
         };
         _context.TechnicianAuditLogs.Add(auditLog);
@@ -264,20 +292,73 @@ public class AdminService : IAdminService
             "SimulatorOverrideApproved",
             "ElectricianProfile",
             profile.ProfileId.ToString(),
-            $"Approved technician Profile #{profile.ProfileId} via Simulator Override",
+            $"Approved technician Profile #{profile.ProfileId} via Simulator Override with Technical Skill Level {technicalSkillRating}/5",
             oldValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = previousStatus }),
-            newValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = "Approved", IsApprovedByAdmin = true }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { VerificationStatus = "Approved", IsApprovedByAdmin = true, TechnicalSkillRating = technicalSkillRating }),
             reason: overrideReason.Trim());
         _context.AdminAuditLogs.Add(adminAudit);
 
         try
         {
             await _context.SaveChangesAsync();
-            return ReviewActionResult.Ok($"Technician #{profileId} has been approved via Administrator Simulator Override.", "Approved");
+            return ReviewActionResult.Ok($"Technician #{profileId} has been approved via Administrator Simulator Override with Technical Skill Level {technicalSkillRating}/5.", "Approved");
         }
         catch (DbUpdateConcurrencyException)
         {
             return ReviewActionResult.Conflict("Concurrency conflict: This application was updated by another administrator simultaneously. Please reload to review the latest state.", profile.VerificationStatus);
+        }
+    }
+
+    public async Task<ReviewActionResult> UpdateTechnicalSkillRatingAsync(int profileId, int technicalSkillRating, string? assessmentNote, int adminUserId)
+    {
+        var profile = await _context.ElectricianProfiles.FirstOrDefaultAsync(p => p.ProfileId == profileId);
+        if (profile == null)
+        {
+            return ReviewActionResult.NotFound($"Application with ProfileId #{profileId} was not found.");
+        }
+
+        if (technicalSkillRating < 1 || technicalSkillRating > 5)
+        {
+            return ReviewActionResult.Invalid("Technical skill rating must be an integer between 1 and 5.");
+        }
+
+        var previousRating = profile.TechnicalSkillRating;
+        profile.TechnicalSkillRating = technicalSkillRating;
+        profile.TechnicalSkillAssessmentNote = string.IsNullOrWhiteSpace(assessmentNote) ? null : assessmentNote.Trim();
+        profile.TechnicalSkillRatedAtUtc = DateTime.UtcNow;
+        profile.TechnicalSkillRatedByAdminId = adminUserId;
+
+        var auditLog = new TechnicianAuditLog
+        {
+            ElectricianProfileId = profile.ProfileId,
+            AdminId = adminUserId,
+            Action = "SkillRatingUpdated",
+            PreviousStatus = profile.VerificationStatus,
+            NewStatus = profile.VerificationStatus,
+            Reason = $"Technical skill rating updated from {(previousRating.HasValue ? $"Level {previousRating.Value}/5" : "Not yet assessed")} to Level {technicalSkillRating}/5.{(string.IsNullOrWhiteSpace(assessmentNote) ? "" : $" Assessment Note: {assessmentNote.Trim()}")}",
+            TimestampUtc = DateTime.UtcNow
+        };
+        _context.TechnicianAuditLogs.Add(auditLog);
+
+        var adminAudit = _auditService.CreateAuditEntry(
+            adminUserId,
+            "TechnicalSkillRatingUpdated",
+            "ElectricianProfile",
+            profile.ProfileId.ToString(),
+            $"Updated technical skill rating for Profile #{profile.ProfileId} to Level {technicalSkillRating}/5",
+            oldValues: System.Text.Json.JsonSerializer.Serialize(new { TechnicalSkillRating = previousRating }),
+            newValues: System.Text.Json.JsonSerializer.Serialize(new { TechnicalSkillRating = technicalSkillRating, AssessmentNote = profile.TechnicalSkillAssessmentNote }),
+            reason: assessmentNote);
+        _context.AdminAuditLogs.Add(adminAudit);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            return ReviewActionResult.Ok($"Technical skill rating for technician #{profileId} has been successfully updated to Level {technicalSkillRating}/5.", profile.VerificationStatus);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return ReviewActionResult.Conflict("Concurrency conflict: This profile was updated by another administrator simultaneously. Please reload.", profile.VerificationStatus);
         }
     }
 
@@ -888,16 +969,17 @@ public class AdminService : IAdminService
         decimal platformCommission = payments.Sum(p => p.PlatformCommission);
         decimal electricianEarnings = payments.Sum(p => p.ElectricianEarning);
 
-        var cashSplitTxs = payments.Where(p => string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) ||
-                                               string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase)).ToList();
-        var digitalTxs = payments.Where(p => !string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) &&
-                                             !string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase)).ToList();
+        var digitalTxs = payments.Where(p => string.Equals(p.PaymentMethod, "FullDigital", StringComparison.OrdinalIgnoreCase) ||
+                                             string.Equals(p.PaymentMethod, "Card", StringComparison.OrdinalIgnoreCase)).ToList();
+        var cashTxs = payments.Where(p => string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase)).ToList();
+        var legacyCashSplitTxs = payments.Where(p => string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase)).ToList();
 
         decimal fullDigitalOnline = digitalTxs.Sum(p => p.TotalAmount);
-        decimal cashSplitOnline = cashSplitTxs.Sum(p => p.PlatformCommission);
-        decimal directCashPaid = cashSplitTxs.Sum(p => p.ElectricianEarning);
+        decimal cashSplitOnline = legacyCashSplitTxs.Sum(p => p.PlatformCommission);
+        decimal directCashPaid = cashTxs.Sum(p => p.TotalAmount) + legacyCashSplitTxs.Sum(p => p.ElectricianEarning);
 
-        decimal walletLiability = await _context.ElectricianProfiles.SumAsync(ep => (decimal?)ep.AppWalletBalance) ?? 0m;
+        var profiles = await _context.ElectricianProfiles.AsNoTracking().ToListAsync();
+        decimal walletLiability = profiles.Where(ep => ep.AppWalletBalance > 0).Sum(ep => ep.AppWalletBalance);
 
         var payoutQuery = _context.TechnicianPayoutRecords.AsNoTracking().Where(pr => pr.DisbursedAtUtc <= toDate);
         if (fromDate.HasValue)
@@ -932,17 +1014,22 @@ public class AdminService : IAdminService
         // 3. Payment Method Distribution
         int digitalCount = digitalTxs.Count();
         decimal digitalGmv = digitalTxs.Sum(p => p.TotalAmount);
-        int cashSplitCount = cashSplitTxs.Count();
-        decimal cashSplitGmv = cashSplitTxs.Sum(p => p.TotalAmount);
+        int cashCount = cashTxs.Count();
+        decimal cashGmv = cashTxs.Sum(p => p.TotalAmount);
+        int cashSplitCount = legacyCashSplitTxs.Count();
+        decimal cashSplitGmv = legacyCashSplitTxs.Sum(p => p.TotalAmount);
         int totalTxs = payments.Count();
 
         var paymentMethods = new PaymentMethodDistributionDto
         {
             FullDigitalCount = digitalCount,
             FullDigitalGmv = digitalGmv,
+            CashCount = cashCount,
+            CashGmv = cashGmv,
             CashSplitCount = cashSplitCount,
             CashSplitGmv = cashSplitGmv,
             FullDigitalPercentage = totalTxs > 0 ? Math.Round((decimal)digitalCount / totalTxs * 100m, 1) : 0m,
+            CashPercentage = totalTxs > 0 ? Math.Round((decimal)cashCount / totalTxs * 100m, 1) : 0m,
             CashSplitPercentage = totalTxs > 0 ? Math.Round((decimal)cashSplitCount / totalTxs * 100m, 1) : 0m
         };
 
@@ -1245,16 +1332,17 @@ public class AdminService : IAdminService
         decimal electricianEarnings = currentPayments.Sum(p => p.ElectricianEarning);
         decimal priorEarnings = priorPayments.Sum(p => p.ElectricianEarning);
 
-        var cashSplitTxs = currentPayments.Where(p => string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) ||
-                                                      string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase)).ToList();
-        var digitalTxs = currentPayments.Where(p => !string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) &&
-                                                    !string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase)).ToList();
+        var digitalTxs = currentPayments.Where(p => string.Equals(p.PaymentMethod, "FullDigital", StringComparison.OrdinalIgnoreCase) ||
+                                                    string.Equals(p.PaymentMethod, "Card", StringComparison.OrdinalIgnoreCase)).ToList();
+        var cashTxs = currentPayments.Where(p => string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase)).ToList();
+        var legacyCashSplitTxs = currentPayments.Where(p => string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase)).ToList();
 
         decimal fullDigitalOnline = digitalTxs.Sum(p => p.TotalAmount);
-        decimal cashSplitOnline = cashSplitTxs.Sum(p => p.PlatformCommission);
-        decimal directCashPaid = cashSplitTxs.Sum(p => p.ElectricianEarning);
+        decimal cashSplitOnline = legacyCashSplitTxs.Sum(p => p.PlatformCommission);
+        decimal directCashPaid = cashTxs.Sum(p => p.TotalAmount) + legacyCashSplitTxs.Sum(p => p.ElectricianEarning);
 
-        decimal walletLiability = await _context.ElectricianProfiles.SumAsync(ep => (decimal?)ep.AppWalletBalance) ?? 0m;
+        var profilesBi = await _context.ElectricianProfiles.AsNoTracking().ToListAsync();
+        decimal walletLiability = profilesBi.Where(ep => ep.AppWalletBalance > 0).Sum(ep => ep.AppWalletBalance);
 
         var allPayouts = await _context.TechnicianPayoutRecords.AsNoTracking().Where(pr => pr.DisbursedAtUtc <= toDate).ToListAsync();
         var currentPayouts = allPayouts.Where(pr => !fromDate.HasValue || pr.DisbursedAtUtc >= fromDate.Value).ToList();
@@ -1276,10 +1364,10 @@ public class AdminService : IAdminService
             foreach (var g in grouped)
             {
                 var firstDate = g.First().CreatedAtUtc;
-                var gDigital = g.Where(p => !string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) &&
-                                            !string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase));
-                var gSplit = g.Where(p => string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) ||
-                                          string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase));
+                var gDigital = g.Where(p => string.Equals(p.PaymentMethod, "FullDigital", StringComparison.OrdinalIgnoreCase) ||
+                                            string.Equals(p.PaymentMethod, "Card", StringComparison.OrdinalIgnoreCase));
+                var gCash = g.Where(p => string.Equals(p.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase));
+                var gSplit = g.Where(p => string.Equals(p.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase));
 
                 finTrends.Add(new FinancialBiTrendPointDto
                 {
@@ -1288,7 +1376,7 @@ public class AdminService : IAdminService
                     Commission = g.Sum(p => p.PlatformCommission),
                     ElectricianEarnings = g.Sum(p => p.ElectricianEarning),
                     OnlineCollections = gDigital.Sum(p => p.TotalAmount) + gSplit.Sum(p => p.PlatformCommission),
-                    DirectCash = gSplit.Sum(p => p.ElectricianEarning),
+                    DirectCash = gCash.Sum(p => p.TotalAmount) + gSplit.Sum(p => p.ElectricianEarning),
                     TransactionCount = g.Count()
                 });
             }
@@ -1306,8 +1394,8 @@ public class AdminService : IAdminService
             FullDigitalCount = digitalTxs.Count,
             FullDigitalGmv = digitalTxs.Sum(p => p.TotalAmount),
             CashSplitOnlineCollections = cashSplitOnline,
-            CashSplitCount = cashSplitTxs.Count,
-            CashSplitGmv = cashSplitTxs.Sum(p => p.TotalAmount),
+            CashSplitCount = legacyCashSplitTxs.Count,
+            CashSplitGmv = legacyCashSplitTxs.Sum(p => p.TotalAmount),
             OnlineCollectionsTotal = fullDigitalOnline + cashSplitOnline,
             DirectCashPaidToElectricians = directCashPaid,
             ElectricianEarnings = electricianEarnings,
@@ -2601,7 +2689,9 @@ public class AdminService : IAdminService
                 DistanceKm = distance,
                 AverageRating = avgRating,
                 CompletedJobsCount = completed,
-                AppWalletBalance = c.AppWalletBalance
+                AppWalletBalance = c.AppWalletBalance,
+                TechnicalSkillRating = c.TechnicalSkillRating,
+                TechnicalSkillAssessmentNote = c.TechnicalSkillAssessmentNote
             };
         })
         .OrderBy(c => c.DistanceKm ?? double.MaxValue)

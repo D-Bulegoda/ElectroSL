@@ -147,13 +147,21 @@ public class PaymentProcessingService : IPaymentProcessingService
                     ElectricianWalletCredit = electricianEarnings,
                     Description = "Pay 100% online now via Card. Electrician receives 85% as earnings credited to their ElectroSL digital wallet."
                 },
+                Cash = new CheckoutPricingTierDto
+                {
+                    PaymentMethod = "Cash",
+                    CustomerPaysOnline = 0.00m,
+                    CustomerPaysCash = grossJobValue,
+                    ElectricianWalletCredit = 0.00m,
+                    Description = "Pay 100% in cash directly to the technician on-site upon work completion. 15% platform commission is charged to technician wallet."
+                },
                 CashSplit = new CheckoutPricingTierDto
                 {
-                    PaymentMethod = "CashSplit",
-                    CustomerPaysOnline = platformCommission,
-                    CustomerPaysCash = electricianEarnings,
+                    PaymentMethod = "Cash",
+                    CustomerPaysOnline = 0.00m,
+                    CustomerPaysCash = grossJobValue,
                     ElectricianWalletCredit = 0.00m,
-                    Description = "Pay 15% platform commission online now. Pay the remaining 85% directly to the electrician in cash. No wallet movement or debt occurs."
+                    Description = "Pay 100% in cash directly to the technician on-site upon work completion. 15% platform commission is charged to technician wallet."
                 }
             }
         };
@@ -268,20 +276,25 @@ public class PaymentProcessingService : IPaymentProcessingService
             _context.PaymentTransactions.Add(paymentTransaction);
             await _context.SaveChangesAsync(cancellationToken);
 
+            // Acquire exclusive row lock on ElectricianProfile
+            var profile = await _context.ElectricianProfiles
+                .FromSqlInterpolated($"SELECT * FROM ElectricianProfiles WHERE UserId = {job.ElectricianId.Value} FOR UPDATE")
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (profile == null)
+            {
+                throw new InvalidOperationException($"Electrician profile for assigned user #{job.ElectricianId.Value} was not found.");
+            }
+
             if (canonicalMethod == "FullDigital")
             {
                 customerPaidOnline = grossJobValue;
                 customerDirectCash = 0.00m;
 
-                // Acquire exclusive row lock on ElectricianProfile
-                var profile = await _context.ElectricianProfiles
-                    .FromSqlInterpolated($"SELECT * FROM ElectricianProfiles WHERE UserId = {job.ElectricianId.Value} FOR UPDATE")
-                    .FirstOrDefaultAsync(cancellationToken);
-
-                if (profile == null)
-                {
-                    throw new InvalidOperationException($"Electrician profile for assigned user #{job.ElectricianId.Value} was not found.");
-                }
+                decimal debtBefore = profile.OutstandingCommissionDebt;
+                decimal debtRecovered = Math.Min(debtBefore, electricianEarnings);
+                decimal debtAfter = debtBefore - debtRecovered;
+                profile.OutstandingCommissionDebt = debtAfter;
 
                 decimal balanceBefore = profile.AppWalletBalance;
                 decimal balanceAfter = balanceBefore + electricianEarnings;
@@ -297,21 +310,52 @@ public class PaymentProcessingService : IPaymentProcessingService
                     Amount = electricianEarnings,
                     BalanceBefore = balanceBefore,
                     BalanceAfter = balanceAfter,
+                    CommissionDebtBefore = debtBefore,
+                    CommissionDebtAfter = debtAfter,
+                    CommissionDebtRecovered = debtRecovered,
                     TransactionType = WalletTransactionType.DigitalJobEarning,
-                    Description = $"Digital job earning for Job #{job.JobId} (Gross: LKR {grossJobValue:N2}, 15% Comm: LKR {platformCommission:N2})",
+                    Description = debtRecovered > 0
+                        ? $"Digital job earning for Job #{job.JobId} (+LKR {electricianEarnings:N2}). Commission debt recovered: LKR {debtRecovered:N2}."
+                        : $"Digital job earning for Job #{job.JobId} (+LKR {electricianEarnings:N2}).",
                     CreatedAtUtc = nowUtc
                 };
 
                 _context.WalletTransactions.Add(walletTransaction);
                 await _context.SaveChangesAsync(cancellationToken);
             }
-            else // CashSplit
+            else // Cash
             {
-                customerPaidOnline = platformCommission;
-                customerDirectCash = electricianEarnings;
+                customerPaidOnline = 0.00m;
+                customerDirectCash = grossJobValue;
 
-                // Strictly NO wallet mutations and NO wallet transaction records
-                updatedWalletBalance = null;
+                decimal debtBefore = profile.OutstandingCommissionDebt;
+                decimal debtAfter = debtBefore + platformCommission;
+                profile.OutstandingCommissionDebt = debtAfter;
+
+                decimal balanceBefore = profile.AppWalletBalance;
+                decimal balanceAfter = balanceBefore - platformCommission;
+                profile.AppWalletBalance = balanceAfter;
+                updatedWalletBalance = balanceAfter;
+
+                // Insert immutable ledger transaction
+                var walletTransaction = new WalletTransaction
+                {
+                    ElectricianProfileId = profile.ProfileId,
+                    JobId = job.JobId,
+                    PaymentTransactionId = paymentTransaction.TransactionId,
+                    Amount = -platformCommission,
+                    BalanceBefore = balanceBefore,
+                    BalanceAfter = balanceAfter,
+                    CommissionDebtBefore = debtBefore,
+                    CommissionDebtAfter = debtAfter,
+                    CommissionDebtRecovered = 0.00m,
+                    TransactionType = WalletTransactionType.CashJobCommissionDebit,
+                    Description = $"Platform commission (15%) debit for cash-paid Job #{job.JobId} (-LKR {platformCommission:N2}).",
+                    CreatedAtUtc = nowUtc
+                };
+
+                _context.WalletTransactions.Add(walletTransaction);
+                await _context.SaveChangesAsync(cancellationToken);
             }
 
             // 10. PRESERVE JOB STATUS: Do NOT set job.Status = "Completed"
@@ -350,16 +394,16 @@ public class PaymentProcessingService : IPaymentProcessingService
                     {
                         await _notificationService.SendNotificationAsync(
                             job.ElectricianId.Value,
-                            "Platform Commission Confirmed",
-                            $"Customer paid the 15% platform fee for Job #{job.JobId} online. Please collect LKR {electricianEarnings:N2} directly from the customer in cash upon work completion.",
+                            "Cash Payment Confirmed",
+                            $"Customer paid LKR {grossJobValue:N2} in cash on-site for Job #{job.JobId}. 15% platform commission of LKR {platformCommission:N2} has been debited to your wallet.",
                             "PaymentCashSplit",
                             job.JobId
                         );
 
                         await _notificationService.SendNotificationAsync(
                             job.CustomerId,
-                            "Platform Fee Paid",
-                            $"Your payment of LKR {platformCommission:N2} for the 15% platform fee for Job #{job.JobId} was successful. Please pay the remaining LKR {electricianEarnings:N2} directly to the electrician in cash.",
+                            "Cash Payment Recorded",
+                            $"Your direct cash payment of LKR {grossJobValue:N2} to technician for Job #{job.JobId} was recorded.",
                             "PaymentSuccess",
                             job.JobId
                         );
@@ -376,7 +420,7 @@ public class PaymentProcessingService : IPaymentProcessingService
                 Success = true,
                 Message = canonicalMethod == "FullDigital"
                     ? $"Payment of LKR {grossJobValue:N2} processed successfully via digital payment."
-                    : $"Platform commission of LKR {platformCommission:N2} paid online. LKR {electricianEarnings:N2} is payable in cash to the electrician.",
+                    : $"Direct cash payment of LKR {grossJobValue:N2} recorded. Platform commission of LKR {platformCommission:N2} debited to wallet.",
                 TransactionId = paymentTransaction.TransactionId,
                 JobId = job.JobId,
                 JobStatus = job.Status,
@@ -409,25 +453,25 @@ public class PaymentProcessingService : IPaymentProcessingService
     private static string NormalizePaymentMethod(string rawMethod)
     {
         if (string.IsNullOrWhiteSpace(rawMethod))
-            throw new ArgumentException("Payment method is required.");
+            throw new ArgumentException("Payment method is required. Valid payment methods are 'FullDigital' and 'Cash'.");
 
         var clean = rawMethod.Trim();
 
         if (clean.Equals("FullDigital", StringComparison.OrdinalIgnoreCase) ||
             clean.Equals("Card", StringComparison.OrdinalIgnoreCase) ||
             clean.Equals("Credit Card", StringComparison.OrdinalIgnoreCase) ||
-            clean.Equals("Debit Card", StringComparison.OrdinalIgnoreCase))
+            clean.Equals("Debit Card", StringComparison.OrdinalIgnoreCase) ||
+            clean.Equals("Online", StringComparison.OrdinalIgnoreCase))
         {
             return "FullDigital";
         }
 
-        if (clean.Equals("CashSplit", StringComparison.OrdinalIgnoreCase) ||
-            clean.Equals("Cash", StringComparison.OrdinalIgnoreCase) ||
+        if (clean.Equals("Cash", StringComparison.OrdinalIgnoreCase) ||
             clean.Equals("Cash on Delivery", StringComparison.OrdinalIgnoreCase))
         {
-            return "CashSplit";
+            return "Cash";
         }
 
-        throw new ArgumentException($"Unsupported payment method '{rawMethod}'. Allowed methods: 'FullDigital', 'CashSplit'.");
+        throw new ArgumentException($"Invalid payment method '{rawMethod}'. Allowed payment methods for new payments are 'FullDigital' and 'Cash'.");
     }
 }

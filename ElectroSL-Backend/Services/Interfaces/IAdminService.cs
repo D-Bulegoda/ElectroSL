@@ -7,8 +7,9 @@ public interface IAdminService
     // Technician Application Management
     Task<List<ApplicationListItemDto>> GetApplicationsByStatusAsync(string status);
     Task<ApplicationDetailDto?> GetApplicationDetailAsync(int profileId);
-    Task<ReviewActionResult> ApproveApplicationAsync(int profileId, int adminUserId);
-    Task<ReviewActionResult> ApproveApplicationWithOverrideAsync(int profileId, string overrideReason, int adminUserId);
+    Task<ReviewActionResult> ApproveApplicationAsync(int profileId, int adminUserId, int technicalSkillRating, string? assessmentNote = null);
+    Task<ReviewActionResult> ApproveApplicationWithOverrideAsync(int profileId, string overrideReason, int adminUserId, int technicalSkillRating = 3, string? assessmentNote = null);
+    Task<ReviewActionResult> UpdateTechnicalSkillRatingAsync(int profileId, int technicalSkillRating, string? assessmentNote, int adminUserId);
     Task<ReviewActionResult> RejectApplicationAsync(int profileId, string reason, int adminUserId);
     Task<ReviewActionResult> RevokeApplicationAsync(int profileId, string reason, int adminUserId);
     Task<List<TechnicianAuditLogDto>> GetApplicationAuditLogsAsync(int profileId);

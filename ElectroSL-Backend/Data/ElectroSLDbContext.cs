@@ -54,10 +54,16 @@ public class ElectroSLDbContext : DbContext
         {
             entity.HasKey(ep => ep.ProfileId);
             entity.Property(ep => ep.AppWalletBalance).HasPrecision(18, 2);
+            entity.Property(ep => ep.OutstandingCommissionDebt).HasPrecision(18, 2);
             entity.Property(ep => ep.Specialization).HasMaxLength(100);
             entity.Property(ep => ep.NicDocumentUrl).HasMaxLength(500).HasDefaultValue(string.Empty);
             entity.Property(ep => ep.VerificationStatus).HasMaxLength(50).HasDefaultValue("Pending").IsConcurrencyToken();
             entity.Property(ep => ep.ReviewedAt).IsConcurrencyToken();
+
+            entity.Property(ep => ep.TechnicalSkillRating);
+            entity.Property(ep => ep.TechnicalSkillAssessmentNote).HasMaxLength(1000);
+            entity.Property(ep => ep.TechnicalSkillRatedAtUtc);
+            entity.Property(ep => ep.TechnicalSkillRatedByAdminId);
 
             entity.HasOne(ep => ep.User)
                   .WithOne(u => u.ElectricianProfile)
@@ -333,6 +339,9 @@ public class ElectroSLDbContext : DbContext
             entity.Property(wt => wt.Amount).HasPrecision(18, 2).IsRequired();
             entity.Property(wt => wt.BalanceBefore).HasPrecision(18, 2).IsRequired();
             entity.Property(wt => wt.BalanceAfter).HasPrecision(18, 2).IsRequired();
+            entity.Property(wt => wt.CommissionDebtBefore).HasPrecision(18, 2).IsRequired();
+            entity.Property(wt => wt.CommissionDebtAfter).HasPrecision(18, 2).IsRequired();
+            entity.Property(wt => wt.CommissionDebtRecovered).HasPrecision(18, 2).IsRequired();
             entity.Property(wt => wt.TransactionType).HasConversion<int>().IsRequired();
             entity.Property(wt => wt.Description).HasMaxLength(255).IsRequired();
             entity.Property(wt => wt.ExternalReferenceNumber).HasMaxLength(100);
@@ -388,6 +397,7 @@ public class ElectroSLDbContext : DbContext
             entity.Property(pr => pr.AccountNumberMasked).HasMaxLength(30).IsRequired();
             entity.Property(pr => pr.BankTransferReference).HasMaxLength(100).IsRequired();
             entity.Property(pr => pr.AdminNotes).HasMaxLength(500).IsRequired();
+            entity.Property(pr => pr.ReversalReason).HasMaxLength(500);
 
             entity.HasOne(pr => pr.ElectricianProfile)
                   .WithMany(ep => ep.PayoutRecords)

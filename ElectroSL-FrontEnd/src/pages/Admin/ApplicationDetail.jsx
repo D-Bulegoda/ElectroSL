@@ -6,6 +6,8 @@ import DocumentViewer from '../../components/admin/DocumentViewer';
 import RejectionModal from '../../components/admin/RejectionModal';
 import RevocationModal from '../../components/admin/RevocationModal';
 import SimulatorOverrideModal from '../../components/admin/SimulatorOverrideModal';
+import TechnicianApprovalModal from '../../components/admin/TechnicianApprovalModal';
+import UpdateSkillRatingModal from '../../components/admin/UpdateSkillRatingModal';
 import { formatDateTime, formatCurrency } from '../../utils/formattingHelpers';
 import {
   ArrowLeftIcon,
@@ -30,6 +32,8 @@ const ApplicationDetail = ({ profileId, onBack, onStatusUpdated }) => {
 
   // Modals state
   const [docModal, setDocModal] = useState({ isOpen: false, url: '', type: '', title: '' });
+  const [approvalModal, setApprovalModal] = useState(false);
+  const [skillModal, setSkillModal] = useState(false);
   const [rejectModal, setRejectModal] = useState(false);
   const [revokeModal, setRevokeModal] = useState(false);
   const [overrideModal, setOverrideModal] = useState(false);
@@ -56,14 +60,17 @@ const ApplicationDetail = ({ profileId, onBack, onStatusUpdated }) => {
     }
   }, [effectiveProfileId]);
 
-  const handleApprove = async () => {
+  const handleApprove = () => {
     if (!detail) return;
-    if (!window.confirm(`Confirm standard accreditation approval for ${detail.name}?`)) return;
+    setApprovalModal(true);
+  };
 
+  const handleApprovalConfirm = async ({ technicalSkillRating, assessmentNote }) => {
     try {
       setIsSubmitting(true);
-      await adminService.approveApplication(effectiveProfileId);
-      setFeedback({ type: 'success', text: 'Technician has been approved and authorized.' });
+      await adminService.approveApplication(effectiveProfileId, { technicalSkillRating, assessmentNote });
+      setFeedback({ type: 'success', text: `Technician has been approved and authorized with Technical Skill Level ${technicalSkillRating}/5.` });
+      setApprovalModal(false);
       fetchDetail();
       if (onStatusUpdated) onStatusUpdated();
     } catch (err) {
@@ -73,16 +80,31 @@ const ApplicationDetail = ({ profileId, onBack, onStatusUpdated }) => {
     }
   };
 
-  const handleOverrideConfirm = async (explanation) => {
+  const handleOverrideConfirm = async (explanation, payload) => {
     try {
       setIsSubmitting(true);
-      await adminService.approveWithOverride(effectiveProfileId, explanation);
-      setFeedback({ type: 'success', text: 'Simulator override granted. Technician approved.' });
+      await adminService.approveWithOverride(effectiveProfileId, explanation, payload);
+      setFeedback({ type: 'success', text: `Simulator override granted. Technician approved with Technical Skill Level ${payload?.technicalSkillRating || 3}/5.` });
       setOverrideModal(false);
       fetchDetail();
       if (onStatusUpdated) onStatusUpdated();
     } catch (err) {
       setFeedback({ type: 'error', text: err.message || 'Override approval failed.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateSkillConfirm = async ({ technicalSkillRating, assessmentNote }) => {
+    try {
+      setIsSubmitting(true);
+      await adminService.updateTechnicalSkillRating(effectiveProfileId, { technicalSkillRating, assessmentNote });
+      setFeedback({ type: 'success', text: `Technical Skill Level updated to Level ${technicalSkillRating}/5.` });
+      setSkillModal(false);
+      fetchDetail();
+      if (onStatusUpdated) onStatusUpdated();
+    } catch (err) {
+      setFeedback({ type: 'error', text: err.message || 'Failed to update skill rating.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -209,6 +231,18 @@ const ApplicationDetail = ({ profileId, onBack, onStatusUpdated }) => {
             <button
               type="button"
               disabled={isSubmitting}
+              onClick={() => setSkillModal(true)}
+              className="admin-btn admin-btn-secondary"
+              title="Update Technical Skill Rating"
+            >
+              ⭐ Update Technical Skill Level
+            </button>
+          )}
+
+          {isApproved && (
+            <button
+              type="button"
+              disabled={isSubmitting}
               onClick={() => setRevokeModal(true)}
               className="admin-btn admin-btn-danger"
             >
@@ -275,6 +309,67 @@ const ApplicationDetail = ({ profileId, onBack, onStatusUpdated }) => {
               <div>
                 <span className="admin-label">Wallet Balance</span>
                 <div style={{ fontWeight: 600, color: '#0f172a' }}>{formatCurrency(detail.walletBalance || 0)}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Technical Skill Assessment Card */}
+          <div className="admin-card">
+            <div className="admin-card-header">
+              <div>
+                <h2 className="admin-card-title">Technical Skill Assessment</h2>
+                <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>Admin Evaluated Skill Rating</span>
+              </div>
+              {isApproved && (
+                <button
+                  type="button"
+                  onClick={() => setSkillModal(true)}
+                  className="admin-btn admin-btn-ghost admin-btn-sm"
+                  style={{ color: '#2563eb' }}
+                >
+                  Edit Skill Rating
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.8125rem' }}>
+              <div>
+                <span className="admin-label">Technical Skill Level</span>
+                {detail.technicalSkillRating ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                    <span style={{ fontSize: '1.2rem', color: '#f59e0b', letterSpacing: '0.1rem' }}>
+                      {'★'.repeat(detail.technicalSkillRating)}{'☆'.repeat(5 - detail.technicalSkillRating)}
+                    </span>
+                    <strong style={{ color: '#0f172a', fontSize: '0.9rem' }}>
+                      Level {detail.technicalSkillRating} / 5
+                    </strong>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      (Admin Assessed Skill)
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ color: '#94a3b8', fontStyle: 'italic', marginTop: '0.2rem' }}>
+                    Not yet assessed
+                  </div>
+                )}
+              </div>
+
+              {detail.technicalSkillAssessmentNote && (
+                <div>
+                  <span className="admin-label">Assessment Note</span>
+                  <div style={{ backgroundColor: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid #e2e8f0', color: '#334155' }}>
+                    "{detail.technicalSkillAssessmentNote}"
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
+                <div>
+                  Assessed: <strong>{detail.technicalSkillRatedAtUtc ? formatDateTime(detail.technicalSkillRatedAtUtc) : 'Not assessed'}</strong>
+                </div>
+                <div>
+                  Assessor: <strong>{detail.technicalSkillRatedByAdminId ? `Admin #${detail.technicalSkillRatedByAdminId}` : 'None'}</strong>
+                </div>
               </div>
             </div>
           </div>
@@ -532,6 +627,26 @@ const ApplicationDetail = ({ profileId, onBack, onStatusUpdated }) => {
         onClose={() => setOverrideModal(false)}
         onConfirm={handleOverrideConfirm}
         technicianName={detail.name}
+        isSubmitting={isSubmitting}
+      />
+
+      {/* Technician Approval & Skill Rating Modal */}
+      <TechnicianApprovalModal
+        isOpen={approvalModal}
+        onClose={() => setApprovalModal(false)}
+        onConfirm={handleApprovalConfirm}
+        technicianName={detail.name}
+        isSubmitting={isSubmitting}
+      />
+
+      {/* Update Technical Skill Rating Modal */}
+      <UpdateSkillRatingModal
+        isOpen={skillModal}
+        onClose={() => setSkillModal(false)}
+        onConfirm={handleUpdateSkillConfirm}
+        technicianName={detail.name}
+        currentRating={detail.technicalSkillRating}
+        currentNote={detail.technicalSkillAssessmentNote || ''}
         isSubmitting={isSubmitting}
       />
     </div>

@@ -69,6 +69,7 @@ public class CheckoutEquipmentItemDto
 public class CheckoutPricingOptionsDto
 {
     public CheckoutPricingTierDto FullDigital { get; set; } = null!;
+    public CheckoutPricingTierDto Cash { get; set; } = null!;
     public CheckoutPricingTierDto CashSplit { get; set; } = null!;
 }
 

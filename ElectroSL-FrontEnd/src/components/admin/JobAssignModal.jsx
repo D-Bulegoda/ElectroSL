@@ -260,7 +260,7 @@ export default function JobAssignModal({ job, onClose, onSuccess }) {
                             </span>
                           </div>
                           <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
-                            {elec.specialization || 'General Electrician'} &bull; Rating: {elec.averageRating > 0 ? `${elec.averageRating.toFixed(1)} ★` : 'New'} &bull; {elec.completedJobsCount} jobs completed
+                            {elec.specialization || 'General Electrician'} &bull; Skill: <strong style={{ color: elec.technicalSkillRating ? '#b45309' : '#64748b' }}>{elec.technicalSkillRating ? `Level ${elec.technicalSkillRating}/5` : 'Not yet assessed'}</strong> &bull; Rating: {elec.averageRating > 0 ? `${elec.averageRating.toFixed(1)} ★` : 'New'} &bull; {elec.completedJobsCount} jobs
                             {elec.distanceKm !== null && elec.distanceKm !== undefined && (
                               <span> &bull; {elec.distanceKm.toFixed(1)} km away</span>
                             )}

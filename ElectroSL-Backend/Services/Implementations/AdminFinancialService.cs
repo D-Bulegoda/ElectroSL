@@ -44,34 +44,47 @@ public class AdminFinancialService : IAdminFinancialService
         decimal totalPlatformCommission = paymentTransactions.Sum(pt => pt.PlatformCommission);
         decimal totalElectricianEarnings = paymentTransactions.Sum(pt => pt.ElectricianEarning);
 
-        // Separate CashSplit vs Digital accounting
-        // CashSplit: customer pays 15% online to ElectroSL; 85% is paid directly in cash to electrician.
-        // Digital: customer pays 100% online to ElectroSL.
-        var cashSplitTxs = paymentTransactions
-            .Where(pt => string.Equals(pt.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(pt.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
+        // Separate Cash vs Digital vs Legacy CashSplit accounting
         var digitalTxs = paymentTransactions
-            .Where(pt => !string.Equals(pt.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase) &&
-                         !string.Equals(pt.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase))
+            .Where(pt => string.Equals(pt.PaymentMethod, "FullDigital", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(pt.PaymentMethod, "Card", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(pt.PaymentMethod, "Online", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        decimal totalCollectedOnline = digitalTxs.Sum(pt => pt.TotalAmount) + cashSplitTxs.Sum(pt => pt.PlatformCommission);
-        decimal totalDirectCash = cashSplitTxs.Sum(pt => pt.ElectricianEarning);
+        var cashTxs = paymentTransactions
+            .Where(pt => string.Equals(pt.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
-        // 2. Active wallet liabilities (sum of all technician balances)
-        decimal outstandingWalletLiability = await _context.ElectricianProfiles
-            .AsNoTracking()
-            .SumAsync(ep => (decimal?)ep.AppWalletBalance, cancellationToken) ?? 0.00m;
+        var legacyCashSplitTxs = paymentTransactions
+            .Where(pt => string.Equals(pt.PaymentMethod, "CashSplit", StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
-        int positiveBalanceCount = await _context.ElectricianProfiles
-            .AsNoTracking()
-            .CountAsync(ep => ep.AppWalletBalance > 0, cancellationToken);
+        decimal totalCollectedOnline = digitalTxs.Sum(pt => pt.TotalAmount) + legacyCashSplitTxs.Sum(pt => pt.PlatformCommission);
+        decimal totalDirectCash = cashTxs.Sum(pt => pt.TotalAmount) + legacyCashSplitTxs.Sum(pt => pt.ElectricianEarning);
 
-        int totalTechnicians = await _context.ElectricianProfiles
+        // 2. Active wallet liabilities & debts
+        var profiles = await _context.ElectricianProfiles
             .AsNoTracking()
-            .CountAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        decimal outstandingWalletLiability = profiles
+            .Where(ep => ep.AppWalletBalance > 0)
+            .Sum(ep => ep.AppWalletBalance);
+
+        decimal totalOutstandingCommissionDebt = profiles
+            .Sum(ep => ep.OutstandingCommissionDebt);
+
+        decimal totalWithdrawableLiability = profiles
+            .Sum(ep => ep.OutstandingCommissionDebt > 0 ? 0m : Math.Max(0m, ep.AppWalletBalance));
+
+        decimal totalNegativeWalletBalances = profiles
+            .Where(ep => ep.AppWalletBalance < 0)
+            .Sum(ep => Math.Abs(ep.AppWalletBalance));
+
+        int positiveBalanceCount = profiles
+            .Count(ep => ep.AppWalletBalance > 0);
+
+        int totalTechnicians = profiles.Count;
 
         // 3. Payout statistics
         decimal totalRecordedPayouts = await _context.TechnicianPayoutRecords
@@ -108,6 +121,9 @@ public class AdminFinancialService : IAdminFinancialService
             TotalPlatformCommission = totalPlatformCommission,
             TotalElectricianEarnings = totalElectricianEarnings,
             OutstandingWalletLiability = outstandingWalletLiability,
+            TotalOutstandingCommissionDebt = totalOutstandingCommissionDebt,
+            TotalWithdrawableLiability = totalWithdrawableLiability,
+            TotalNegativeWalletBalances = totalNegativeWalletBalances,
             TotalRecordedPayouts = totalRecordedPayouts,
             TotalReversedPayouts = totalReversedPayouts,
             NetDisbursedPayouts = netDisbursedPayouts,
@@ -183,6 +199,9 @@ public class AdminFinancialService : IAdminFinancialService
                 Amount = wt.Amount,
                 BalanceBefore = wt.BalanceBefore,
                 BalanceAfter = wt.BalanceAfter,
+                CommissionDebtBefore = wt.CommissionDebtBefore,
+                CommissionDebtAfter = wt.CommissionDebtAfter,
+                CommissionDebtRecovered = wt.CommissionDebtRecovered,
                 TransactionType = wt.TransactionType,
                 TransactionTypeName = wt.TransactionType.ToString(),
                 Description = wt.Description,
@@ -270,6 +289,9 @@ public class AdminFinancialService : IAdminFinancialService
             Amount = wt.Amount,
             BalanceBefore = wt.BalanceBefore,
             BalanceAfter = wt.BalanceAfter,
+            CommissionDebtBefore = wt.CommissionDebtBefore,
+            CommissionDebtAfter = wt.CommissionDebtAfter,
+            CommissionDebtRecovered = wt.CommissionDebtRecovered,
             TransactionType = wt.TransactionType,
             TransactionTypeName = wt.TransactionType.ToString(),
             Description = wt.Description,
@@ -315,6 +337,8 @@ public class AdminFinancialService : IAdminFinancialService
             IsApprovedByAdmin = profile.IsApprovedByAdmin,
             IsOnline = profile.IsOnline,
             CurrentWalletBalance = profile.AppWalletBalance,
+            OutstandingCommissionDebt = profile.OutstandingCommissionDebt,
+            AvailablePayoutBalance = profile.OutstandingCommissionDebt > 0 ? 0m : Math.Max(0m, profile.AppWalletBalance),
             LifetimeDigitalEarnings = lifetimeDigitalEarnings,
             LifetimeGrossPayouts = lifetimeGrossPayouts,
             LifetimeReversedPayouts = lifetimeReversedPayouts,
@@ -377,14 +401,30 @@ public class AdminFinancialService : IAdminFinancialService
                 };
             }
 
-            // Enforce non-negative wallet balance invariant
-            if (profile.AppWalletBalance < dto.Amount)
+            // Calculate Available Payout Balance protecting commission debt with Zero-Debt Gate Rule
+            decimal availablePayoutBalance = profile.OutstandingCommissionDebt > 0 
+                ? 0m 
+                : Math.Max(0m, profile.AppWalletBalance);
+
+            if (availablePayoutBalance < minPayoutAmount)
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return new PayoutActionResultDto
                 {
                     Success = false,
-                    Message = $"Insufficient wallet funds. Current balance: LKR {profile.AppWalletBalance:N2}, Requested payout: LKR {dto.Amount:N2}. Balances can never be negative."
+                    Message = profile.OutstandingCommissionDebt > 0
+                        ? $"Cannot record payout: Electrician has LKR {profile.OutstandingCommissionDebt:N2} in outstanding platform commission debt. All debt must be recovered from future digital earnings before funds become withdrawable."
+                        : $"Insufficient withdrawable funds. Available payout balance is LKR {availablePayoutBalance:N2}, which is below the minimum required threshold of LKR {minPayoutAmount:N2}."
+                };
+            }
+
+            if (dto.Amount > availablePayoutBalance)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return new PayoutActionResultDto
+                {
+                    Success = false,
+                    Message = $"Requested payout amount (LKR {dto.Amount:N2}) exceeds available withdrawable balance of LKR {availablePayoutBalance:N2}."
                 };
             }
 
@@ -401,7 +441,8 @@ public class AdminFinancialService : IAdminFinancialService
                 BankTransferReference = dto.BankTransferReference.Trim(),
                 RecordedByAdminId = adminUserId,
                 DisbursedAtUtc = DateTime.UtcNow,
-                AdminNotes = dto.AdminNotes.Trim()
+                AdminNotes = dto.AdminNotes.Trim(),
+                IsReversed = false
             };
             _context.TechnicianPayoutRecords.Add(payoutRecord);
             await _context.SaveChangesAsync(cancellationToken);
@@ -417,6 +458,9 @@ public class AdminFinancialService : IAdminFinancialService
                 Amount = -dto.Amount,
                 BalanceBefore = balanceBefore,
                 BalanceAfter = balanceAfter,
+                CommissionDebtBefore = profile.OutstandingCommissionDebt,
+                CommissionDebtAfter = profile.OutstandingCommissionDebt,
+                CommissionDebtRecovered = 0.00m,
                 TransactionType = WalletTransactionType.PayoutDisbursed,
                 Description = $"Confirmed bank payout ref: {dto.BankTransferReference.Trim()} ({dto.BankName.Trim()})",
                 InitiatedByAdminId = adminUserId,
@@ -502,6 +546,24 @@ public class AdminFinancialService : IAdminFinancialService
             };
         }
 
+        if (payout.Amount <= 0)
+        {
+            return new PayoutActionResultDto
+            {
+                Success = false,
+                Message = "Invalid payout amount. Only payouts with positive amounts can be reversed."
+            };
+        }
+
+        if (payout.IsReversed)
+        {
+            return new PayoutActionResultDto
+            {
+                Success = false,
+                Message = $"Payout #{payoutId} has already been reversed on {payout.ReversedAtUtc:yyyy-MM-dd HH:mm} UTC. Multiple reversals are prohibited."
+            };
+        }
+
         // Execute atomic transaction with MariaDB row locking
         using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
         try
@@ -525,7 +587,7 @@ public class AdminFinancialService : IAdminFinancialService
             var alreadyReversed = await _context.WalletTransactions
                 .AnyAsync(wt => wt.PayoutRecordId == payoutId && wt.TransactionType == WalletTransactionType.PayoutReversal, cancellationToken);
 
-            if (alreadyReversed)
+            if (alreadyReversed || payout.IsReversed)
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return new PayoutActionResultDto
@@ -549,6 +611,9 @@ public class AdminFinancialService : IAdminFinancialService
                 Amount = +payout.Amount,
                 BalanceBefore = balanceBefore,
                 BalanceAfter = balanceAfter,
+                CommissionDebtBefore = profile.OutstandingCommissionDebt,
+                CommissionDebtAfter = profile.OutstandingCommissionDebt,
+                CommissionDebtRecovered = 0.00m,
                 TransactionType = WalletTransactionType.PayoutReversal,
                 Description = $"Compensating reversal for Payout #{payout.PayoutId}: {dto.ReversalReason.Trim()}",
                 InitiatedByAdminId = adminUserId,
@@ -557,6 +622,17 @@ public class AdminFinancialService : IAdminFinancialService
             };
             _context.WalletTransactions.Add(reversalLedgerEntry);
             await _context.SaveChangesAsync(cancellationToken);
+
+            // 5. Update payout record status atomically
+            var trackedPayout = await _context.TechnicianPayoutRecords.FindAsync(new object[] { payout.PayoutId }, cancellationToken);
+            if (trackedPayout != null)
+            {
+                trackedPayout.IsReversed = true;
+                trackedPayout.ReversedAtUtc = DateTime.UtcNow;
+                trackedPayout.ReversalReason = dto.ReversalReason.Trim();
+                trackedPayout.ReversalTransactionId = reversalLedgerEntry.TransactionId;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
 
             // 5. Append immutable unified AdminAuditLog entry atomically inside the transaction
             var auditEntry = _auditService.CreateAuditEntry(
@@ -689,6 +765,9 @@ public class AdminFinancialService : IAdminFinancialService
                 Amount = signedAmount,
                 BalanceBefore = balanceBefore,
                 BalanceAfter = balanceAfter,
+                CommissionDebtBefore = profile.OutstandingCommissionDebt,
+                CommissionDebtAfter = profile.OutstandingCommissionDebt,
+                CommissionDebtRecovered = 0.00m,
                 TransactionType = transactionType,
                 Description = $"Admin adjustment ({dto.Type.Trim()}): {dto.Reason.Trim()}",
                 InitiatedByAdminId = adminUserId,

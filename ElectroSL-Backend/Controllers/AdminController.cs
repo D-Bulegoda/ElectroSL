@@ -93,10 +93,15 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("applications/{profileId}/approve")]
-    public async Task<IActionResult> ApproveApplication(int profileId)
+    public async Task<IActionResult> ApproveApplication(int profileId, [FromBody] ApproveTechnicianDto dto)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
         var adminUserId = GetCurrentAdminUserId();
-        var result = await _adminService.ApproveApplicationAsync(profileId, adminUserId);
+        var result = await _adminService.ApproveApplicationAsync(profileId, adminUserId, dto.TechnicalSkillRating, dto.AssessmentNote);
 
         return result.Status switch
         {
@@ -107,7 +112,7 @@ public class AdminController : ControllerBase
                 canOverride = result.Message.Contains("simulator", StringComparison.OrdinalIgnoreCase) 
             }),
             ReviewResultStatus.Conflict => Conflict(new { message = result.Message, currentStatus = result.CurrentStatus }),
-            ReviewResultStatus.Success => Ok(new { message = result.Message, profileId, status = result.CurrentStatus }),
+            ReviewResultStatus.Success => Ok(new { message = result.Message, profileId, status = result.CurrentStatus, technicalSkillRating = dto.TechnicalSkillRating }),
             _ => BadRequest(new { message = result.Message })
         };
     }
@@ -121,14 +126,42 @@ public class AdminController : ControllerBase
         }
 
         var adminUserId = GetCurrentAdminUserId();
-        var result = await _adminService.ApproveApplicationWithOverrideAsync(profileId, dto.Explanation, adminUserId);
+        var result = await _adminService.ApproveApplicationWithOverrideAsync(profileId, dto.Explanation, adminUserId, dto.TechnicalSkillRating, dto.AssessmentNote);
 
         return result.Status switch
         {
             ReviewResultStatus.NotFound => NotFound(new { message = result.Message }),
             ReviewResultStatus.InvalidPrerequisites => BadRequest(new { message = result.Message }),
             ReviewResultStatus.Conflict => Conflict(new { message = result.Message, currentStatus = result.CurrentStatus }),
-            ReviewResultStatus.Success => Ok(new { message = result.Message, profileId, status = result.CurrentStatus, overrideRecorded = true }),
+            ReviewResultStatus.Success => Ok(new { message = result.Message, profileId, status = result.CurrentStatus, overrideRecorded = true, technicalSkillRating = dto.TechnicalSkillRating }),
+            _ => BadRequest(new { message = result.Message })
+        };
+    }
+
+    [HttpPut("applications/{profileId}/skill-rating")]
+    public async Task<IActionResult> UpdateSkillRating(int profileId, [FromBody] UpdateTechnicalSkillRatingDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var adminUserId = GetCurrentAdminUserId();
+        var result = await _adminService.UpdateTechnicalSkillRatingAsync(profileId, dto.TechnicalSkillRating, dto.AssessmentNote, adminUserId);
+
+        return result.Status switch
+        {
+            ReviewResultStatus.NotFound => NotFound(new { message = result.Message }),
+            ReviewResultStatus.InvalidPrerequisites => BadRequest(new { message = result.Message }),
+            ReviewResultStatus.Conflict => Conflict(new { message = result.Message, currentStatus = result.CurrentStatus }),
+            ReviewResultStatus.Success => Ok(new 
+            { 
+                message = result.Message, 
+                profileId, 
+                technicalSkillRating = dto.TechnicalSkillRating, 
+                assessmentNote = dto.AssessmentNote,
+                status = result.CurrentStatus 
+            }),
             _ => BadRequest(new { message = result.Message })
         };
     }

@@ -240,6 +240,17 @@ const AdminFinancialManagement = () => {
       return;
     }
 
+    if (techWallet && techWallet.profileId === profileId) {
+      if (techWallet.outstandingCommissionDebt > 0) {
+        setPayoutError(`Cannot record payout: Technician has ${formatCurrency(techWallet.outstandingCommissionDebt)} in outstanding commission debt. Commission debt must be fully recovered before payouts can be made.`);
+        return;
+      }
+      if (amount > techWallet.availablePayoutBalance) {
+        setPayoutError(`Requested payout amount (${formatCurrency(amount)}) exceeds available withdrawable balance (${formatCurrency(techWallet.availablePayoutBalance)}).`);
+        return;
+      }
+    }
+
     try {
       setPayoutSubmitting(true);
       const res = await adminService.recordPayout({
@@ -390,6 +401,12 @@ const AdminFinancialManagement = () => {
             <ArrowDownLeftIcon size={12} color="#059669" /> Digital Job Earning
           </span>
         );
+      case 'CashJobCommissionDebit':
+        return (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600, backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}>
+            <ArrowUpRightIcon size={12} color="#dc2626" /> Cash Commission Debit (15%)
+          </span>
+        );
       case 'PayoutDisbursed':
         return (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600, backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
@@ -428,7 +445,7 @@ const AdminFinancialManagement = () => {
     const isCredit = item.transactionTypeName === 'DigitalJobEarning' ||
                      item.transactionTypeName === 'PayoutReversal' ||
                      item.transactionTypeName === 'AdminAdjustmentCredit' ||
-                     item.amount > 0 && item.transactionTypeName !== 'PayoutDisbursed' && item.transactionTypeName !== 'AdminAdjustmentDebit';
+                     (item.amount > 0 && item.transactionTypeName !== 'PayoutDisbursed' && item.transactionTypeName !== 'AdminAdjustmentDebit' && item.transactionTypeName !== 'CashJobCommissionDebit');
 
     const color = isCredit ? '#16a34a' : '#dc2626';
     const sign = isCredit ? '+' : '-';
@@ -548,22 +565,22 @@ const AdminFinancialManagement = () => {
               icon={<DollarSignIcon size={18} color="#10b981" />}
             />
             <StatsCard
-              title="Online Collected Volume"
+              title="Recorded Online Payments"
               value={formatCurrency(summary?.totalCollectedOnline || 0)}
-              subtitle="100% Digital + 15% CashSplit Fees"
+              subtitle="100% Digital Jobs (Mock Gateway)"
               color="purple"
               icon={<CreditCardIcon size={18} color="#8b5cf6" />}
             />
             <StatsCard
               title="Direct Cash to Technicians"
               value={formatCurrency(summary?.totalDirectCashToElectricians || 0)}
-              subtitle="85% Paid On-Site by Customers"
+              subtitle="100% Paid On-Site by Customers"
               color="yellow"
               icon={<WalletIcon size={18} color="#f59e0b" />}
             />
           </div>
 
-          {/* Secondary Metric Cards: Liability & Disbursed Payouts */}
+          {/* Secondary Metric Cards: Liabilities, Debt & Disbursed Payouts */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1rem' }}>
             <StatsCard
               title="Total Technician Earnings"
@@ -575,9 +592,23 @@ const AdminFinancialManagement = () => {
             <StatsCard
               title="Outstanding Wallet Liability"
               value={formatCurrency(summary?.outstandingWalletLiability || 0)}
-              subtitle="Pending Virtual Wallet Claims"
+              subtitle="Gross Positive Wallet Claims"
+              color="blue"
+              icon={<WalletIcon size={18} color="#3b82f6" />}
+            />
+            <StatsCard
+              title="Outstanding Commission Debt"
+              value={formatCurrency(summary?.totalOutstandingCommissionDebt || 0)}
+              subtitle="Cash Job Commission Owed to Platform"
               color="red"
               icon={<AlertTriangleIcon size={18} color="#ef4444" />}
+            />
+            <StatsCard
+              title="Available Withdrawable Liability"
+              value={formatCurrency(summary?.totalWithdrawableLiability || 0)}
+              subtitle="Zero-Debt Gate Eligible Funds"
+              color="green"
+              icon={<CheckIcon size={18} color="#10b981" />}
             />
             <StatsCard
               title="Net Disbursed Bank Payouts"
@@ -996,8 +1027,19 @@ const AdminFinancialManagement = () => {
                     <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#38bdf8', margin: '0.5rem 0', letterSpacing: '-0.02em' }}>
                       {formatCurrency(techWallet.currentWalletBalance)}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                      Audited Virtual Balance (immutable ledger row-locked)
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.15)', fontSize: '0.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#94a3b8' }}>Commission Debt:</span>
+                        <strong style={{ color: techWallet.outstandingCommissionDebt > 0 ? '#f87171' : '#94a3b8' }}>
+                          {formatCurrency(techWallet.outstandingCommissionDebt || 0)}
+                        </strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#94a3b8' }}>Available for Payout:</span>
+                        <strong style={{ color: techWallet.outstandingCommissionDebt > 0 ? '#fbbf24' : '#4ade80' }}>
+                          {techWallet.outstandingCommissionDebt > 0 ? 'LKR 0.00 (Locked by Debt)' : formatCurrency(techWallet.availablePayoutBalance || 0)}
+                        </strong>
+                      </div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
@@ -1267,8 +1309,18 @@ const AdminFinancialManagement = () => {
                   ))}
                 </select>
                 {techWallet && payoutForm.electricianProfileId && (
-                  <div style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600, marginTop: '0.2rem' }}>
-                    Available Wallet Balance: {formatCurrency(techWallet.currentWalletBalance)}
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <div style={{ color: '#2563eb', fontWeight: 600 }}>
+                      Wallet Balance: {formatCurrency(techWallet.currentWalletBalance)}
+                    </div>
+                    {techWallet.outstandingCommissionDebt > 0 && (
+                      <div style={{ color: '#dc2626', fontWeight: 600 }}>
+                        ⚠️ Outstanding Commission Debt: {formatCurrency(techWallet.outstandingCommissionDebt)} (Payouts Locked)
+                      </div>
+                    )}
+                    <div style={{ color: techWallet.outstandingCommissionDebt > 0 ? '#b45309' : '#16a34a', fontWeight: 600 }}>
+                      Withdrawable Funds: {techWallet.outstandingCommissionDebt > 0 ? 'LKR 0.00' : formatCurrency(techWallet.availablePayoutBalance)}
+                    </div>
                   </div>
                 )}
               </div>
