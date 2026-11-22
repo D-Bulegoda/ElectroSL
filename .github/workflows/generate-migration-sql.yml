@@ -2,8 +2,11 @@
 name: Generate ElectroSL Migration SQL
 
 on:
+  push:
+    branches:
+      - feature/core
   workflow_dispatch:
-
+  
 permissions:
   contents: read
 
