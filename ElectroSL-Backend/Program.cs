@@ -12,6 +12,9 @@ using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // 1. Controller and API configuration
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -54,25 +57,11 @@ builder.Services.AddSwaggerGen(options =>
 var connectionString =
     builder.Configuration.GetConnectionString("DefaultConnection");
 
-ServerVersion serverVersion;
-
-try
-{
-    serverVersion = ServerVersion.AutoDetect(connectionString);
-}
-catch
-{
-    // Fallback when the database cannot be reached.
-    serverVersion =
-        ServerVersion.Parse("10.11.16-mariadb");
-}
-
 builder.Services.AddDbContext<ElectroSLDbContext>(options =>
-    options.UseMySql(
+    options.UseNpgsql(
         connectionString,
-        serverVersion,
-        mySqlOptions =>
-            mySqlOptions.CommandTimeout(120)));
+        npgsqlOptions =>
+            npgsqlOptions.CommandTimeout(120)));
 
 // 4. JWT authentication
 var jwtSecretKey =
@@ -143,13 +132,19 @@ builder.Services.AddScoped<INotificationService,
 builder.Services.AddSignalR();
 
 // 6. CORS policy
+var frontendOrigins =
+    builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[]
+    {
+        "http://localhost:5173",
+        "http://localhost:3000"
+    };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
         policy
-            .WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:3000")
+            .WithOrigins(frontendOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials());
@@ -254,6 +249,9 @@ app.Use(async (context, next) =>
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<JobTrackingHub>(
+    "/hubs/job-tracking");
 
 app.MapHub<NotificationHub>(
     "/hubs/notifications");
