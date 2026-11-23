@@ -38,25 +38,16 @@ public class MatchingService : IMatchingService
     }
 
         
-    public async Task<List<ElectricianProfile>> FindTopRatedIslandWideAsync(
-        double minimumRating = 4.5)
+    
+    public async Task<List<ElectricianProfile>> FindApprovedElectriciansIslandWideAsync()
     {
-        // Find electricians whose average customer rating meets the minimum.
-        var qualifiedElectricianIds = await _context.Reviews
-            .GroupBy(r => r.ElectricianId)
-            .Where(g => g.Average(r => r.Rating) >= (decimal)minimumRating)
-            .Select(g => g.Key)
+        // Return all admin-approved electricians.
+        // Ratings will be displayed separately to customers.
+        return await _context.ElectricianProfiles
+            .Where(e => e.IsApprovedByAdmin)
             .ToListAsync();
-
-        // Return their approved electrician profiles.
-        var topRatedElectricians = await _context.ElectricianProfiles
-            .Where(e =>
-                e.IsApprovedByAdmin &&
-                qualifiedElectricianIds.Contains(e.UserId))
-            .ToListAsync();
-
-        return topRatedElectricians;
     }
+
 
 
     private static double CalculateDistanceInKm(

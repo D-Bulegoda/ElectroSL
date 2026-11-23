@@ -31,6 +31,12 @@ public class JobService : IJobService
         if (string.IsNullOrWhiteSpace(jobDto.Description))
             throw new ArgumentException("Job description is required.");
 
+        if (jobDto.LocationLat < -90 || jobDto.LocationLat > 90)
+            throw new ArgumentException("Invalid latitude.");
+
+        if (jobDto.LocationLng < -180 || jobDto.LocationLng > 180)
+            throw new ArgumentException("Invalid longitude.");
+
         var jobType = jobDto.JobType.Trim();
 
         if (!jobType.Equals("Maintenance", StringComparison.OrdinalIgnoreCase) &&
@@ -103,9 +109,8 @@ public class JobService : IJobService
             "NewConstruction",
             StringComparison.OrdinalIgnoreCase))
         {
-            // Find approved electricians with an average rating of 4.5+.
-            return await _matchingService.FindTopRatedIslandWideAsync(
-                4.5);
+            // Find all admin-approved electricians island-wide.
+            return await _matchingService.FindApprovedElectriciansIslandWideAsync();
         }
 
         throw new InvalidOperationException(

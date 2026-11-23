@@ -20,18 +20,16 @@ public class AdminController : ControllerBase
         _environment = environment;
     }
 
-    private int GetCurrentAdminUserId()
+    private int? GetCurrentAdminUserId()
     {
-        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                      ?? User.FindFirst("sub")?.Value 
-                      ?? User.FindFirst("id")?.Value;
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (int.TryParse(idClaim, out var adminId))
         {
             return adminId;
         }
 
-        return 1; // Default fallback for local development or seed admin
+        return null;
     }
 
     [HttpGet("applications")]
@@ -98,7 +96,10 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> ApproveApplication(int profileId)
     {
         var adminUserId = GetCurrentAdminUserId();
-        var success = await _adminService.ApproveApplicationAsync(profileId, adminUserId);
+
+        if (adminUserId == null)
+            return Unauthorized(new { message = "Invalid admin identity." });
+       var success = await _adminService.ApproveApplicationAsync(profileId, adminUserId.Value);
 
         if (!success)
         {
@@ -120,7 +121,11 @@ public class AdminController : ControllerBase
         }
 
         var adminUserId = GetCurrentAdminUserId();
-        var success = await _adminService.RejectApplicationAsync(profileId, dto.Reason, adminUserId);
+
+        if (adminUserId == null)
+            return Unauthorized(new { message = "Invalid admin identity." });
+        
+        var success = await _adminService.RejectApplicationAsync(profileId, dto.Reason, adminUserId.Value);
 
         if (!success)
         {

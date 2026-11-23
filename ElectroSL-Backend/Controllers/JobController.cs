@@ -1,6 +1,8 @@
 
+using System.Security.Claims;
 using ElectroSL_Backend.DTOs.Job;
 using ElectroSL_Backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ElectroSL_Backend.Controllers;
@@ -16,12 +18,22 @@ public class JobController : ControllerBase
         _jobService = jobService;
     }
 
+    [Authorize(Roles = "Customer")]
     [HttpPost("create")]
     public async Task<IActionResult> CreateJob(
         [FromBody] CreateJobDto request)
     {
         try
         {
+            var userIdClaim = User.FindFirstValue(
+                ClaimTypes.NameIdentifier);
+
+            if (!int.TryParse(userIdClaim, out int customerId))
+                return Unauthorized(new { message = "Invalid user token." });
+
+            // Get customer ID from JWT, not from the request body.
+            request.CustomerId = customerId;
+
             var job = await _jobService.CreateJobAsync(request);
 
             return Ok(new
@@ -70,7 +82,6 @@ public class JobController : ControllerBase
         [FromQuery] double lat,
         [FromQuery] double lng)
     {
-        // Nearby job listing logic will be implemented separately.
         return Ok(new
         {
             message = "Nearby job listing is not implemented yet."
