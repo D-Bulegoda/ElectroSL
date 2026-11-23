@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../../services/api';
 
 export default function SignUpElectrician() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     fullName: '',
     nic: '',
@@ -15,8 +17,10 @@ export default function SignUpElectrician() {
     confirmPassword: '',
   });
 
+  const [nicDocument, setNicDocument] = useState(null);
   const [certificate, setCertificate] = useState(null);
   const [message, setMessage] = useState('');
+  const [isError, setIsError] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -30,12 +34,20 @@ export default function SignUpElectrician() {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
+      setIsError(true);
       setMessage('Passwords do not match!');
+      return;
+    }
+
+    if (!nicDocument || !certificate) {
+      setIsError(true);
+      setMessage('Please upload both your NIC document and qualification certificate.');
       return;
     }
 
     try {
       setLoading(true);
+      setIsError(false);
       setMessage('');
 
       const formPayload = new FormData();
@@ -45,24 +57,31 @@ export default function SignUpElectrician() {
       formPayload.append('phone', formData.phone);
       formPayload.append('address', formData.address);
       formPayload.append('qualification', formData.qualification);
-      if (certificate) {
-        formPayload.append('certificate', certificate);
-      }
+      formPayload.append('certificate', certificate);
+      formPayload.append('nicDocument', nicDocument);
 
       const response = await fetch(`${API_BASE_URL}/Auth/register-electrician`, {
         method: 'POST',
-        body: formPayload
+        body: formPayload,
       });
 
-      if (response.ok) {
-        setMessage('Registration form submitted successfully! Your application is pending review.');
-      } else {
-        const data = await response.json().catch(() => ({}));
-        setMessage(data.message || 'Registration submitted.');
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setIsError(true);
+        setMessage(data.message || 'Registration failed. Please try again.');
+        return;
       }
+
+      if (data.userId) {
+        localStorage.setItem('electricianId', data.userId);
+        localStorage.setItem('userId', data.userId);
+      }
+
+      navigate('/electrician/simulator');
     } catch {
-      // Graceful fallback for offline development
-      setMessage('Registration form submitted successfully!');
+      setIsError(true);
+      setMessage('Could not connect to the server. Make sure the backend is running on port 5192.');
     } finally {
       setLoading(false);
     }
@@ -146,8 +165,15 @@ export default function SignUpElectrician() {
             required
           />
 
-          <label>Upload Qualification Certificate</label>
+          <label>Upload NIC Document</label>
+          <input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(e) => setNicDocument(e.target.files[0])}
+            required
+          />
 
+          <label>Upload Qualification Certificate</label>
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
@@ -176,10 +202,14 @@ export default function SignUpElectrician() {
           />
 
           <button type="submit" disabled={loading}>
-            {loading ? 'Submitting...' : 'Submit Registration'}
+            {loading ? 'Submitting...' : 'Continue to 2D Circuit Simulator →'}
           </button>
 
-          {message && <p>{message}</p>}
+          {message && (
+            <p style={{ color: isError ? '#dc2626' : '#16a34a', marginTop: '10px' }}>
+              {message}
+            </p>
+          )}
         </form>
 
         <p className="signup-login-link">

@@ -234,7 +234,8 @@ const LEVELS = {
 };
 
 export default function CircuitSimulator() {
-  const [electricianId] = useState(1);
+  const [electricianId] = useState(() =>
+  Number(localStorage.getItem('electricianId') || localStorage.getItem('userId') || 1));
   const [isVerifiedProfile, setIsVerifiedProfile] = useState(false);
   const [checkingVerification, setCheckingVerification] = useState(true);
 
@@ -689,8 +690,10 @@ export default function CircuitSimulator() {
     }
   };
 
-  const handleSubmitFinalScore = async (finalAverageScore) => {
+ const handleSubmitFinalScore = async (finalAverageScore) => {
     setIsSubmitting(true);
+    const totalTimeTaken = taskResults.reduce((sum, r) => sum + (r.timeUsedSeconds || 0), 0);
+
     try {
       const response = await fetch('http://localhost:5192/api/Simulator/evaluate', {
         method: 'POST',
@@ -699,6 +702,8 @@ export default function CircuitSimulator() {
           electricianId,
           correctConnections: taskResults.filter((r) => r.passed).length,
           score: finalAverageScore,
+          timeTakenSeconds: totalTimeTaken,
+          safetyMistakesCount: tabSwitchWarnings,
           isPassed: finalAverageScore >= 75,
           taskId: taskResults.map((r) => r.taskId).join(','),
           configurationJson: JSON.stringify({

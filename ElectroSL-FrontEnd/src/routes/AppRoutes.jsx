@@ -92,6 +92,7 @@ function AppRoutes() {
         {/* Authentication */}
         <Route path="/login" element={<Login />} />
         <Route path="/electrician/signup" element={<SignUpElectrician />} />
+        <Route path="/signup-electrician" element={<SignUpElectrician />} />
 
         {/* Customer Portal */}
         <Route path="/customer/home" element={<CustomerHome />} />
