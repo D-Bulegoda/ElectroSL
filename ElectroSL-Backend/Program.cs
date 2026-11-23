@@ -2,6 +2,11 @@ using ElectroSL_Backend.Data;
 using ElectroSL_Backend.Services.Implementations;
 using ElectroSL_Backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.AspNetCore.Identity;
+using ElectroSL_Backend.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,9 +14,38 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"]
+    ?? throw new InvalidOperationException("JWT SecretKey is missing.");
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings["Issuer"],
+
+            ValidateAudience = true,
+            ValidAudience = jwtSettings["Audience"],
+
+            ValidateLifetime = true,
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(secretKey)),
+
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<ElectroSLDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
+    options.UseMySql(
+        connectionString,
+        new MariaDbServerVersion(new Version(10, 11, 16)),
         mySqlOptions => mySqlOptions.CommandTimeout(120)
     ));
 
@@ -34,6 +68,8 @@ builder.Services.AddCors(options =>
                         .AllowCredentials());
 });
 
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -44,6 +80,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
