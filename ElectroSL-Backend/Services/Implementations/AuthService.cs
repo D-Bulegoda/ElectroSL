@@ -1,4 +1,3 @@
-
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -9,6 +8,8 @@ using ElectroSL_Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography;
+
 
 namespace ElectroSL_Backend.Services.Implementations;
 
@@ -87,10 +88,21 @@ public class AuthService : IAuthService
             };
         }
 
+        // Generate a secure 6-digit OTP
+        string otpCode = RandomNumberGenerator
+            .GetInt32(100000, 1000000)
+            .ToString();
+
+        user.OtpCodeHash = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(otpCode))
+        );
+
+        user.OtpExpiryUtc = DateTime.UtcNow.AddMinutes(5);
+
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        return "Registration successful.";
+        return "Registration successful. OTP verification is required.";
     }
 
     public async Task<string> LoginAsync(string email, string password)
@@ -153,9 +165,50 @@ public class AuthService : IAuthService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public async Task<bool> VerifyOtpAsync(int userId, string otpCode)
+   public async Task<bool> VerifyOtpAsync(int userId, string otpCode)
     {
-        // Temporary placeholder. Real OTP verification is not implemented.
-        return await Task.FromResult(false);
+        if (string.IsNullOrWhiteSpace(otpCode))
+            return false;
+
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.UserId == userId);
+
+        if (user == null || user.IsPhoneVerified)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(user.OtpCodeHash) ||
+            user.OtpExpiryUtc == null)
+            return false;
+
+        if (DateTime.UtcNow > user.OtpExpiryUtc.Value)
+            return false;
+
+        string hashedOtp = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(otpCode.Trim()))
+        );
+
+        byte[] storedHash;
+        byte[] enteredHash;
+
+        try
+        {
+            storedHash = Convert.FromHexString(user.OtpCodeHash);
+            enteredHash = Convert.FromHexString(hashedOtp);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        if (!CryptographicOperations.FixedTimeEquals(storedHash, enteredHash))
+            return false;
+
+        user.IsPhoneVerified = true;
+        user.OtpCodeHash = null;
+        user.OtpExpiryUtc = null;
+
+        await _context.SaveChangesAsync();
+
+        return true;
     }
 }

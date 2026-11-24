@@ -52,4 +52,26 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = ex.Message });
         }
     }
+
+    [HttpPost("verify-otp")]
+public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
+    {
+        bool isVerified = await _authService.VerifyOtpAsync(
+            dto.UserId,
+            dto.OtpCode
+        );
+
+        if (!isVerified)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid or expired OTP."
+            });
+        }
+
+        return Ok(new
+        {
+            message = "Phone number verified successfully."
+        });
+    }
 }

@@ -37,16 +37,39 @@ public class MatchingService : IMatchingService
         return nearbyElectricians;
     }
 
-        
-    
-    public async Task<List<ElectricianProfile>> FindApprovedElectriciansIslandWideAsync()
-    {
-        // Return all admin-approved electricians.
-        // Ratings will be displayed separately to customers.
-        return await _context.ElectricianProfiles
-            .Where(e => e.IsApprovedByAdmin)
-            .ToListAsync();
-    }
+    public async Task<List<ElectricianProfile>>
+    FindApprovedElectriciansIslandWideAsync()
+{
+    // Get all admin-approved electricians.
+    var electricians = await _context.ElectricianProfiles
+        .Where(e => e.IsApprovedByAdmin)
+        .ToListAsync();
+
+    var electricianIds = electricians
+        .Select(e => e.UserId)
+        .ToList();
+
+    // Calculate each electrician's average rating.
+    var averageRatings = await _context.Reviews
+        .Where(r => electricianIds.Contains(r.ElectricianId))
+        .GroupBy(r => r.ElectricianId)
+        .Select(g => new
+        {
+            ElectricianId = g.Key,
+            AverageRating = g.Average(r => r.Rating)
+        })
+        .ToDictionaryAsync(
+            x => x.ElectricianId,
+            x => x.AverageRating
+        );
+
+    // Return electricians with an average rating of 4.5 or above.
+    return electricians
+        .Where(e =>
+            averageRatings.TryGetValue(e.UserId, out var rating) &&
+            rating >= 4.5m)
+        .ToList();
+}
 
 
 
