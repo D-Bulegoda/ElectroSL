@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../services/api';
 
 export default function SignUpElectrician() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     fullName: '',
     nic: '',
@@ -14,8 +17,11 @@ export default function SignUpElectrician() {
     confirmPassword: '',
   });
 
+  const [nicDocument, setNicDocument] = useState(null);
   const [certificate, setCertificate] = useState(null);
   const [message, setMessage] = useState('');
+  const [isError, setIsError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -24,18 +30,61 @@ export default function SignUpElectrician() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
+      setIsError(true);
       setMessage('Passwords do not match!');
       return;
     }
 
-    setMessage('Registration form submitted successfully!');
+    if (!nicDocument || !certificate) {
+      setIsError(true);
+      setMessage('Please upload both your NIC document and qualification certificate.');
+      return;
+    }
 
-    console.log(formData);
-    console.log(certificate);
+    try {
+      setLoading(true);
+      setIsError(false);
+      setMessage('');
+
+      const formPayload = new FormData();
+      formPayload.append('fullName', formData.fullName);
+      formPayload.append('email', formData.email);
+      formPayload.append('password', formData.password);
+      formPayload.append('phone', formData.phone);
+      formPayload.append('address', formData.address);
+      formPayload.append('qualification', formData.qualification);
+      formPayload.append('certificate', certificate);
+      formPayload.append('nicDocument', nicDocument);
+
+      const response = await fetch(`${API_BASE_URL}/Auth/register-electrician`, {
+        method: 'POST',
+        body: formPayload,
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setIsError(true);
+        setMessage(data.message || 'Registration failed. Please try again.');
+        return;
+      }
+
+      if (data.userId) {
+        localStorage.setItem('electricianId', data.userId);
+        localStorage.setItem('userId', data.userId);
+      }
+
+      navigate('/electrician/simulator');
+    } catch {
+      setIsError(true);
+      setMessage('Could not connect to the server. Make sure the backend is running on port 5192.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,7 +94,6 @@ export default function SignUpElectrician() {
         <p>Register as an Electrician</p>
 
         <form onSubmit={handleSubmit}>
-
           <h3>Personal Information</h3>
 
           <input
@@ -117,8 +165,15 @@ export default function SignUpElectrician() {
             required
           />
 
-          <label>Upload Qualification Certificate</label>
+          <label>Upload NIC Document</label>
+          <input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(e) => setNicDocument(e.target.files[0])}
+            required
+          />
 
+          <label>Upload Qualification Certificate</label>
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
@@ -146,19 +201,21 @@ export default function SignUpElectrician() {
             required
           />
 
-          <button type="submit">
-            Submit Registration
+          <button type="submit" disabled={loading}>
+            {loading ? 'Submitting...' : 'Continue to 2D Circuit Simulator →'}
           </button>
 
-          {message && <p>{message}</p>}
-
+          {message && (
+            <p style={{ color: isError ? '#dc2626' : '#16a34a', marginTop: '10px' }}>
+              {message}
+            </p>
+          )}
         </form>
 
         <p className="signup-login-link">
-  Already have an account?{' '}
-  <Link to="/login">Login here</Link>
-</p>
-
+          Already have an account?{' '}
+          <Link to="/login">Login here</Link>
+        </p>
       </div>
     </div>
   );

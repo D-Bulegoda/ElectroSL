@@ -1,11 +1,11 @@
-
 using ElectroSL_Backend.DTOs.Auth;
+using ElectroSL_Backend.Models;
 
 namespace ElectroSL_Backend.Services.Interfaces;
 
 public interface IAuthService
 {
-    Task<string> RegisterAsync(RegisterDto registerDto);
-    Task<string> LoginAsync(string email, string password);
+    Task<AuthResponseDto?> LoginAsync(string email, string password);
     Task<bool> VerifyOtpAsync(int userId, string otpCode);
+    Task<User?> RegisterUserAsync(RegisterDto dto);
 }

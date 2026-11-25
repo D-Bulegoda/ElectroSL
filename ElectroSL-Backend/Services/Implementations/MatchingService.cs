@@ -3,6 +3,7 @@ using ElectroSL_Backend.Data;
 using ElectroSL_Backend.Models;
 using ElectroSL_Backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectroSL_Backend.Services.Implementations;
 

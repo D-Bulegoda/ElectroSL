@@ -25,6 +25,15 @@ public class ApplicationDetailDto
     public int? ReviewedByAdminId { get; set; }
     public DateTime? ReviewedAt { get; set; }
 
+    // Technical Skill Rating (Admin Assessed)
+    public int? TechnicalSkillRating { get; set; }
+    public string? TechnicalSkillAssessmentNote { get; set; }
+    public DateTime? TechnicalSkillRatedAtUtc { get; set; }
+    public int? TechnicalSkillRatedByAdminId { get; set; }
+
     // Financial
     public decimal WalletBalance { get; set; }
+
+    // Persistent Audit History Log
+    public List<TechnicianAuditLogDto> AuditLogs { get; set; } = new();
 }

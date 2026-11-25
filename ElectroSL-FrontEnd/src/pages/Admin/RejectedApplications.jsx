@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import StatusBadge from '../../components/admin/StatusBadge';
 import { formatDateTime } from '../../utils/formattingHelpers';
+import {
+  SearchIcon,
+  RefreshCwIcon,
+  EyeIcon
+} from '../../components/admin/AdminIcons';
 
 const RejectedApplications = ({ onSelectApplication }) => {
+  const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,115 +44,113 @@ const RejectedApplications = ({ onSelectApplication }) => {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1280px' }}>
+      {/* Page Header */}
+      <div className="admin-page-header">
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-            Rejected Applications Archive
-          </h2>
-          <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0.25rem 0 0 0' }}>
-            Technician applications flagged for invalid credentials, blurred documents, or failed safety assessments.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <h1 className="admin-page-title">Rejected Applications Archive</h1>
+            <span
+              style={{
+                fontSize: '0.6875rem',
+                fontWeight: 700,
+                backgroundColor: '#fef2f2',
+                color: '#991b1b',
+                border: '1px solid #fecaca',
+                padding: '0.15rem 0.5rem',
+                borderRadius: '4px'
+              }}
+            >
+              {applications.length} Disqualified
+            </span>
+          </div>
+          <p className="admin-page-subtitle">
+            Submissions declined due to invalid certifications, unreadable documents, or failed safety assessments.
           </p>
         </div>
 
         <button
           type="button"
           onClick={fetchRejected}
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#f1f5f9',
-            border: '1px solid #cbd5e1',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            fontSize: '0.85rem'
-          }}
+          disabled={loading}
+          className="admin-btn admin-btn-secondary"
         >
-          🔄 Refresh
+          <RefreshCwIcon size={14} />
+          <span>Refresh</span>
         </button>
       </div>
 
       {error && (
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.375rem', color: '#991b1b', fontSize: '0.85rem' }}>
+        <div style={{ padding: '0.65rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '4px', color: '#991b1b', fontSize: '0.8125rem' }}>
           {error}
         </div>
       )}
 
-      {/* Search Bar */}
-      <div style={{ backgroundColor: '#ffffff', padding: '1rem', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <input
-          type="text"
-          placeholder="Search by name, email, or skill..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '0.6rem 0.85rem',
-            borderRadius: '0.375rem',
-            border: '1px solid #cbd5e1',
-            fontSize: '0.875rem',
-            boxSizing: 'border-box'
-          }}
-        />
+      {/* Toolbar */}
+      <div className="admin-toolbar">
+        <div className="admin-search-box">
+          <span className="admin-search-icon">
+            <SearchIcon size={14} />
+          </span>
+          <input
+            type="text"
+            placeholder="Search by name, email, specialization..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="admin-search-input"
+          />
+        </div>
       </div>
 
       {/* Table */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+      <div className="admin-table-wrapper">
+        <table className="admin-table">
           <thead>
-            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-              <th style={{ padding: '0.75rem 1rem' }}>Technician</th>
-              <th style={{ padding: '0.75rem 1rem' }}>Specialization</th>
-              <th style={{ padding: '0.75rem 1rem' }}>Status</th>
-              <th style={{ padding: '0.75rem 1rem' }}>Date Applied</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Actions</th>
+            <tr>
+              <th>Technician</th>
+              <th>Specialization</th>
+              <th>Audit Status</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-                  Loading rejected records...
+                <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                  Loading rejected applications...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
-                  No rejected applications found.
+                <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+                  No rejected applications on record.
                 </td>
               </tr>
             ) : (
               filtered.map((app) => (
-                <tr key={app.profileId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <div style={{ fontWeight: 600, color: '#1e293b' }}>{app.name}</div>
+                <tr key={app.profileId}>
+                  <td>
+                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{app.name}</div>
                     <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{app.email}</div>
                   </td>
-                  <td style={{ padding: '0.75rem 1rem', color: '#334155' }}>
+                  <td style={{ color: '#334155' }}>
                     {app.specialization || 'General Electrician'}
                   </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
+                  <td>
                     <StatusBadge status="Rejected" />
                   </td>
-                  <td style={{ padding: '0.75rem 1rem', color: '#64748b', fontSize: '0.8rem' }}>
-                    {formatDateTime(app.createdAt)}
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                    {onSelectApplication && (
-                      <button
-                        type="button"
-                        onClick={() => onSelectApplication(app.profileId)}
-                        style={{
-                          padding: '0.35rem 0.65rem',
-                          backgroundColor: '#f1f5f9',
-                          border: '1px solid #cbd5e1',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Review / Re-evaluate
-                      </button>
-                    )}
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onSelectApplication
+                          ? onSelectApplication(app.profileId)
+                          : navigate(`/admin/applications/${app.profileId}`)
+                      }
+                      className="admin-btn admin-btn-secondary admin-btn-sm"
+                    >
+                      Inspect Dossier
+                    </button>
                   </td>
                 </tr>
               ))
@@ -158,4 +163,3 @@ const RejectedApplications = ({ onSelectApplication }) => {
 };
 
 export default RejectedApplications;
-

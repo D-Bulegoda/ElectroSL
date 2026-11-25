@@ -10,11 +10,6 @@ namespace ElectroSL_Backend.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "ProcessedAt",
-                table: "PaymentTransactions",
-                newName: "CreatedAtUtc");
-
             migrationBuilder.AddColumn<int>(
                 name: "CorrectConnections",
                 table: "SimulatorResults",
@@ -51,11 +46,6 @@ namespace ElectroSL_Backend.Migrations
             migrationBuilder.DropColumn(
                 name: "TaskIds",
                 table: "SimulatorResults");
-
-            migrationBuilder.RenameColumn(
-                name: "CreatedAtUtc",
-                table: "PaymentTransactions",
-                newName: "ProcessedAt");
         }
     }
 }

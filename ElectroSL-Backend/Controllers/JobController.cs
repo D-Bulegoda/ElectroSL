@@ -1,4 +1,3 @@
-
 using System.Security.Claims;
 using ElectroSL_Backend.DTOs.Job;
 using ElectroSL_Backend.Services.Interfaces;
@@ -12,69 +11,18 @@ namespace ElectroSL_Backend.Controllers;
 public class JobController : ControllerBase
 {
     private readonly IJobService _jobService;
+    private readonly IDocumentStorageService _documentStorageService;
 
-    public JobController(IJobService jobService)
+    public JobController(IJobService jobService, IDocumentStorageService documentStorageService)
     {
         _jobService = jobService;
+        _documentStorageService = documentStorageService;
     }
 
-    [Authorize(Roles = "Customer")]
     [HttpPost("create")]
-    public async Task<IActionResult> CreateJob(
-        [FromBody] CreateJobDto request)
+    public IActionResult CreateJob([FromBody] CreateJobDto request)
     {
-        try
-        {
-            var userIdClaim = User.FindFirstValue(
-                ClaimTypes.NameIdentifier);
-
-            if (!int.TryParse(userIdClaim, out int customerId))
-                return Unauthorized(new { message = "Invalid user token." });
-
-            // Get customer ID from JWT, not from the request body.
-            request.CustomerId = customerId;
-
-            var job = await _jobService.CreateJobAsync(request);
-
-            return Ok(new
-            {
-                message = "Job created successfully.",
-                job
-            });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    [HttpGet("{jobId:int}/matching-electricians")]
-    public async Task<IActionResult> GetMatchingElectricians(int jobId)
-    {
-        try
-        {
-            var electricians =
-                await _jobService.FindMatchingElectriciansForJobAsync(jobId);
-
-            return Ok(new
-            {
-                jobId,
-                count = electricians.Count,
-                electricians
-            });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        return Ok(new { message = "Job created. 10km Dispatch logic runs here." });
     }
 
     [HttpGet("nearby")]
@@ -86,5 +34,118 @@ public class JobController : ControllerBase
         {
             message = "Nearby job listing is not implemented yet."
         });
+    }
+
+    [Authorize]
+    [HttpPost("{jobId}/equipment-claims")]
+    public async Task<IActionResult> SubmitEquipmentClaims(int jobId, [FromBody] List<EquipmentItemDto> items)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var electricianUserId = GetCurrentUserId();
+        var result = await _jobService.SubmitEquipmentClaimsAsync(jobId, items, electricianUserId);
+
+        return MapSubmissionResult(result);
+    }
+
+    [Authorize]
+    [HttpPost("equipment-list")]
+    public async Task<IActionResult> SubmitEquipmentList([FromBody] EquipmentListDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var electricianUserId = GetCurrentUserId();
+        var result = await _jobService.SubmitEquipmentClaimsAsync(dto.JobId, dto.Items, electricianUserId);
+
+        return MapSubmissionResult(result);
+    }
+
+    [Authorize]
+    [HttpPost("{jobId}/equipment-claims/with-receipt")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> SubmitSingleClaimWithReceipt(int jobId, [FromForm] SubmitSingleClaimFormDto formDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var electricianUserId = GetCurrentUserId();
+        var result = await _jobService.SubmitSingleClaimWithReceiptAsync(jobId, formDto, electricianUserId);
+
+        return MapSubmissionResult(result);
+    }
+
+    [Authorize]
+    [HttpGet("{jobId}/equipment")]
+    public async Task<IActionResult> GetJobEquipment(int jobId)
+    {
+        var currentUserId = GetCurrentUserId();
+        var userRole = GetCurrentUserRole();
+        var result = await _jobService.GetJobEquipmentClaimsAsync(jobId, currentUserId, userRole);
+
+        return result.Status switch
+        {
+            QueryResultStatus.Success => Ok(result.Claims),
+            QueryResultStatus.NotFound => NotFound(new { message = result.Message }),
+            QueryResultStatus.Forbidden => StatusCode(403, new { message = result.Message }),
+            _ => BadRequest(new { message = result.Message })
+        };
+    }
+
+    [Authorize]
+    [HttpGet("receipts/{fileName}")]
+    public async Task<IActionResult> GetReceiptImage(string fileName)
+    {
+        var currentUserId = GetCurrentUserId();
+        var userRole = GetCurrentUserRole();
+        var result = await _jobService.GetAuthorizedReceiptStreamAsync(fileName, currentUserId, userRole);
+
+        return result.Status switch
+        {
+            ReceiptAuthStatus.Success => File(result.Stream!, result.ContentType, result.FileName),
+            ReceiptAuthStatus.NotFound => NotFound(new { message = result.Message }),
+            ReceiptAuthStatus.Forbidden => StatusCode(403, new { message = result.Message }),
+            _ => BadRequest(new { message = result.Message })
+        };
+    }
+
+    private int GetCurrentUserId()
+    {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+        return int.TryParse(idClaim, out int userId) ? userId : 0;
+    }
+
+    private string GetCurrentUserRole()
+    {
+        return User.FindFirst(ClaimTypes.Role)?.Value
+            ?? User.FindFirst("role")?.Value
+            ?? string.Empty;
+    }
+
+    private IActionResult MapSubmissionResult(EquipmentClaimSubmissionResult result)
+    {
+        return result.Status switch
+        {
+            ClaimSubmissionStatus.Success => StatusCode(201, new
+            {
+                message = result.Message,
+                claims = result.Claims,
+                autoApprovedCount = result.AutoApprovedCount,
+                flaggedCount = result.FlaggedCount
+            }),
+            ClaimSubmissionStatus.NotFound => NotFound(new { message = result.Message }),
+            ClaimSubmissionStatus.Forbidden => StatusCode(403, new { message = result.Message }),
+            ClaimSubmissionStatus.Invalid => BadRequest(new { message = result.Message }),
+            ClaimSubmissionStatus.Duplicate => Conflict(new { message = result.Message }),
+            _ => BadRequest(new { message = result.Message })
+        };
     }
 }

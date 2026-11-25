@@ -63,7 +63,7 @@ export default function Home() {
 
             <button
               className="btn-join-electrician"
-              onClick={() => navigate('/electrician/simulator')}
+              onClick={() => navigate('/signup-electrician')}
             >
               Join as an Electrician
             </button>

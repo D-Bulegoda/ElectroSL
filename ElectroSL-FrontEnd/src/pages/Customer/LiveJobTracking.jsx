@@ -123,7 +123,24 @@ export default function LiveJobTracking() {
           <div>
             <h3>Kasun Perera</h3>
             <p>Verified Electrician</p>
-            <p>⭐ 4.8 / 5 (42 reviews)</p>
+            <p>⭐ 4.8 / 5 (42 customer reviews)</p>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                marginTop: '0.25rem',
+                backgroundColor: '#f1f5f9',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '4px',
+                fontSize: '0.78rem',
+                border: '1px solid #e2e8f0'
+              }}
+            >
+              <span style={{ fontWeight: 600, color: '#334155' }}>Technical Skill Level:</span>
+              <strong style={{ color: '#0f172a' }}>★★★★☆ Level 4 / 5</strong>
+              <span style={{ fontSize: '0.7rem', color: '#64748b' }}>(Admin Assessed Skill)</span>
+            </div>
           </div>
         </div>
 

@@ -11,5 +11,6 @@ public class ApplicationListItemDto
     public string NvqCertificateUrl { get; set; } = string.Empty;
     public string NicDocumentUrl { get; set; } = string.Empty;
     public bool SimulatorPassed { get; set; }
+    public int? TechnicalSkillRating { get; set; }
     public DateTime CreatedAt { get; set; }
 }
