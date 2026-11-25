@@ -6,6 +6,8 @@ using ElectroSL_Backend.Utilities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Hosting;
+using System.Collections.Generic;
 
 namespace ElectroSL_Backend.Controllers;
 
@@ -16,15 +18,18 @@ public class AuthController : ControllerBase
     private readonly IAuthService _authService;
     private readonly IDocumentStorageService _documentStorageService;
     private readonly ElectroSLDbContext _context;
+    private readonly IWebHostEnvironment _environment;
 
     public AuthController(
         IAuthService authService,
         IDocumentStorageService documentStorageService,
-        ElectroSLDbContext context)
+        ElectroSLDbContext context,
+        IWebHostEnvironment environment)
     {
         _authService = authService;
         _documentStorageService = documentStorageService;
         _context = context;
+        _environment = environment;
     }
 
     [HttpPost("login")]
@@ -78,9 +83,9 @@ public class AuthController : ControllerBase
             });
         }
 
-        var user = await _authService.RegisterUserAsync(dto);
+        var result = await _authService.RegisterUserAsync(dto);
 
-        if (user == null)
+        if (result == null)
         {
             return BadRequest(new
             {
@@ -88,12 +93,19 @@ public class AuthController : ControllerBase
             });
         }
 
-        return Ok(new
+        var response = new Dictionary<string, object>
         {
-            success = true,
-            userId = user.UserId,
-            message = "Registration successful."
-        });
+            ["success"] = true,
+            ["userId"] = result.User.UserId,
+            ["message"] = "Registration successful. Please verify your phone number."
+        };
+
+        if (_environment.IsDevelopment())
+        {
+            response["dummyOtp"] = result.OtpCode;
+        }
+
+        return Ok(response);
     }
 
     [HttpPost("register-electrician")]
@@ -202,15 +214,17 @@ public class AuthController : ControllerBase
     [HttpPost("verify-otp")]
     public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
     {
-        if (dto == null || string.IsNullOrWhiteSpace(dto.OtpCode))
+        if (dto == null ||
+            dto.UserId <= 0 ||
+            string.IsNullOrWhiteSpace(dto.OtpCode))
         {
             return BadRequest(new
             {
-                message = "OTP code is required."
+                message = "Valid user ID and OTP code are required."
             });
         }
-
-        var success = await _authService.VerifyOtpAsync(1, dto.OtpCode);
+        
+       var success = await _authService.VerifyOtpAsync(dto.UserId, dto.OtpCode);
 
         if (!success)
         {

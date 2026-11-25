@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
+
 namespace ElectroSL_Backend.Services.Implementations;
 
 public class AuthService : IAuthService
@@ -29,7 +30,7 @@ public class AuthService : IAuthService
         _passwordHasher = passwordHasher;
     }
 
-    public async Task<User?> RegisterUserAsync(RegisterDto dto)
+    public async Task<RegistrationResultDto?> RegisterUserAsync(RegisterDto dto)
     {
         string email = dto.Email.Trim().ToLowerInvariant();
 
@@ -64,7 +65,11 @@ public class AuthService : IAuthService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        return user;
+        return new RegistrationResultDto
+        {
+            User = user,
+            OtpCode = otpCode
+        };;
     }
 
     public async Task<AuthResponseDto?> LoginAsync(string email, string password)
