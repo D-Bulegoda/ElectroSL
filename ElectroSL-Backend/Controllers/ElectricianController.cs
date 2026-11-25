@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using ElectroSL_Backend.Data;
+using ElectroSL_Backend.DTOs.Electrician;
 using ElectroSL_Backend.Models;
 using ElectroSL_Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
@@ -125,8 +126,7 @@ public class ElectricianController : ControllerBase
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadDocuments(
         int id,
-        [FromForm] IFormFile? nicDocument,
-        [FromForm] IFormFile? nvqCertificate)
+        [FromForm] UploadDocumentsFormDto dto)
     {
         var profile = await _context.ElectricianProfiles
             .FirstOrDefaultAsync(p => p.UserId == id || p.ProfileId == id);
@@ -136,22 +136,22 @@ public class ElectricianController : ControllerBase
             return NotFound(new { message = $"Electrician profile not found for ID {id}." });
         }
 
-        if (nicDocument == null && nvqCertificate == null)
+        if (dto?.NicDocument == null && dto?.NvqCertificate == null)
         {
             return BadRequest(new { message = "At least one document (NIC or NVQ certificate) must be provided." });
         }
 
         try
         {
-            if (nicDocument != null && nicDocument.Length > 0)
+            if (dto.NicDocument != null && dto.NicDocument.Length > 0)
             {
-                var nicFileName = await _documentStorageService.SaveDocumentAsync(nicDocument, "nic");
+                var nicFileName = await _documentStorageService.SaveDocumentAsync(dto.NicDocument, "nic");
                 profile.NicDocumentUrl = nicFileName;
             }
 
-            if (nvqCertificate != null && nvqCertificate.Length > 0)
+            if (dto.NvqCertificate != null && dto.NvqCertificate.Length > 0)
             {
-                var nvqFileName = await _documentStorageService.SaveDocumentAsync(nvqCertificate, "nvq");
+                var nvqFileName = await _documentStorageService.SaveDocumentAsync(dto.NvqCertificate, "nvq");
                 profile.NvqCertificateUrl = nvqFileName;
             }
 

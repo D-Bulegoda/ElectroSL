@@ -98,19 +98,12 @@ public class AuthController : ControllerBase
 
     [HttpPost("register-electrician")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> RegisterElectrician(
-        [FromForm] string fullName,
-        [FromForm] string email,
-        [FromForm] string password,
-        [FromForm] string phone,
-        [FromForm] string? address,
-        [FromForm] string? qualification,
-        [FromForm] IFormFile? certificate,
-        [FromForm] IFormFile? nicDocument)
+    public async Task<IActionResult> RegisterElectrician([FromForm] RegisterElectricianFormDto dto)
     {
-        if (string.IsNullOrWhiteSpace(fullName) ||
-            string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(password))
+        if (dto == null ||
+            string.IsNullOrWhiteSpace(dto.FullName) ||
+            string.IsNullOrWhiteSpace(dto.Email) ||
+            string.IsNullOrWhiteSpace(dto.Password))
         {
             return BadRequest(new
             {
@@ -118,7 +111,7 @@ public class AuthController : ControllerBase
             });
         }
 
-        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
 
         var exists = await _context.Users
             .AnyAsync(u => u.Email.ToLower() == normalizedEmail);
@@ -136,19 +129,19 @@ public class AuthController : ControllerBase
 
         try
         {
-            if (certificate != null && certificate.Length > 0)
+            if (dto.Certificate != null && dto.Certificate.Length > 0)
             {
                 nvqStorageKey =
                     await _documentStorageService.SaveDocumentAsync(
-                        certificate,
+                        dto.Certificate,
                         "nvq");
             }
 
-            if (nicDocument != null && nicDocument.Length > 0)
+            if (dto.NicDocument != null && dto.NicDocument.Length > 0)
             {
                 nicStorageKey =
                     await _documentStorageService.SaveDocumentAsync(
-                        nicDocument,
+                        dto.NicDocument,
                         "nic");
             }
         }
@@ -166,11 +159,11 @@ public class AuthController : ControllerBase
 
         var user = new User
         {
-            Name = fullName.Trim(),
+            Name = dto.FullName.Trim(),
             Email = normalizedEmail,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             Role = "Electrician",
-            Phone = phone?.Trim() ?? string.Empty,
+            Phone = dto.Phone?.Trim() ?? string.Empty,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -180,7 +173,7 @@ public class AuthController : ControllerBase
         var profile = new ElectricianProfile
         {
             UserId = user.UserId,
-            Specialization = qualification ?? "General Electrician",
+            Specialization = dto.Qualification ?? "General Electrician",
             NvqCertificateUrl = nvqStorageKey,
             NicDocumentUrl = nicStorageKey,
             VerificationStatus = "Pending"
