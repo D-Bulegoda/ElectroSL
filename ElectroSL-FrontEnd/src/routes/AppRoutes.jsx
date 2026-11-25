@@ -1,22 +1,23 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { getAuthSession } from '../services/authService';
 
 // Public & Hidden Auth Pages
 import Home from '../pages/Home/Home';
 import AdminLogin from '../pages/Admin/AdminLogin';
 
-// Protected Route Guard
+// Protected Route Guard (Existing Admin Guard)
 import ProtectedRoute from './ProtectedRoute';
 
 // Authentication pages
 import Login from '../pages/Auth/Login';
+import CustomerSignUp from '../pages/Auth/CustomerSignUp';
 import SignUpElectrician from '../pages/Auth/SignUpElectrician';
 
 // Customer pages
 import CustomerHome from '../pages/Customer/CustomerHome';
 import PostNewJob from '../pages/Customer/PostNewJob';
 import EmergencySOS from '../pages/Customer/EmergencySOS';
-import ViewBidsAndQuotations from '../pages/Customer/ViewBidsAndQuotations';
 import LiveJobTracking from '../pages/Customer/LiveJobTracking';
 import ApproveEquipmentBill from '../pages/Customer/ApproveEquipmentBill';
 import CheckoutPayment from '../pages/Customer/CheckoutPayment';
@@ -45,13 +46,32 @@ import AdminFinancialManagement from '../pages/Admin/AdminFinancialManagement';
 import AdminAuditLogs from '../pages/Admin/AdminAuditLogs';
 import AdminReports from '../pages/Admin/AdminReports';
 
-// Payment & Notification Components
+// Payment, Notification & Profile Components
 import MockPaymentGateway from '../components/payments/MockPaymentGateway';
 import NotificationBell from '../components/NotificationBell';
+import UserProfileBadge from '../components/UserProfileBadge';
+
+// Inline guard: requires a logged-in Customer profile before posting a job
+function RequireCustomerProfile({ children }) {
+  const location = useLocation();
+  const session = getAuthSession();
+
+  if (!session?.token) {
+    const target = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/signup?redirect=${target}`} replace />;
+  }
+
+  if (session.role !== 'Customer') {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 
 function AppRoutes() {
   return (
     <BrowserRouter>
+      <UserProfileBadge />
       <Routes>
         {/* Public Landing Page */}
         <Route path="/" element={<Home />} />
@@ -66,7 +86,7 @@ function AppRoutes() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="jobs" element={<AdminJobManagement />} />
             <Route path="users" element={<UserManagement />} />
-            
+
             {/* Unified Technician Management & Backward Compatible Aliases */}
             <Route path="technicians" element={<TechnicianManagement />} />
             <Route path="approvals" element={<TechnicianManagement defaultTab="pending" />} />
@@ -91,14 +111,24 @@ function AppRoutes() {
 
         {/* Authentication */}
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<CustomerSignUp />} />
+        <Route path="/customer/signup" element={<CustomerSignUp />} />
         <Route path="/electrician/signup" element={<SignUpElectrician />} />
         <Route path="/signup-electrician" element={<SignUpElectrician />} />
 
         {/* Customer Portal */}
         <Route path="/customer/home" element={<CustomerHome />} />
-        <Route path="/customer/post-job" element={<PostNewJob />} />
+        <Route
+          path="/customer/post-job"
+          element={
+            <RequireCustomerProfile>
+              <PostNewJob />
+            </RequireCustomerProfile>
+          }
+        />
         <Route path="/customer/emergency" element={<EmergencySOS />} />
-        <Route path="/customer/bids" element={<ViewBidsAndQuotations />} />
+        {/* Redirect legacy bids route to live job tracking */}
+        <Route path="/customer/bids" element={<Navigate replace to="/customer/tracking" />} />
         <Route path="/customer/tracking" element={<LiveJobTracking />} />
         <Route path="/customer/equipment-bill" element={<ApproveEquipmentBill />} />
         <Route path="/customer/payment" element={<CheckoutPayment />} />

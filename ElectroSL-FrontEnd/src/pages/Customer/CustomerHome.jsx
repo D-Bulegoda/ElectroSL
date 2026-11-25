@@ -1,102 +1,133 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { getAuthSession } from '../../services/authService';
 
-function CustomerHome() {
-  const menuItems = [
-    { name: 'Dashboard', path: '/customer/home', icon: '⌂' },
-    { name: 'Post New Job', path: '/customer/post-job', icon: '+' },
-    { name: 'My Bids', path: '/customer/bids', icon: '▤' },
-    { name: 'Live Tracking', path: '/customer/tracking', icon: '⌖' },
-    { name: 'Equipment Bills', path: '/customer/equipment-bill', icon: '▣' },
-    { name: 'Payments', path: '/customer/payment', icon: '₨' },
-    { name: 'My Reviews', path: '/customer/review', icon: '☆' },
-  ];
-
-  const stats = [
-    { title: 'Total Jobs', value: '05', icon: '▤' },
-    { title: 'Active Jobs', value: '02', icon: '⚡' },
-    { title: 'Pending Bids', value: '03', icon: '◷' },
-    { title: 'Completed Jobs', value: '03', icon: '✓' },
-  ];
+export default function CustomerHome() {
+  const session = getAuthSession();
+  const customerName = session?.user?.name || 'Welcome Back';
 
   return (
     <div className="customer-layout">
-
-      {/* Sidebar */}
+      {/* Left Sidebar */}
       <aside className="customer-sidebar">
-        <div className="brand">
+        <Link to="/" className="brand" style={{ color: 'white', textDecoration: 'none' }}>
           <span className="brand-icon">⚡</span>
           <span>ElectroSL</span>
-        </div>
+        </Link>
 
         <p className="sidebar-label">CUSTOMER MENU</p>
 
         <nav className="sidebar-nav">
-          {menuItems.map((item, index) => (
-            <Link
-              to={item.path}
-              key={item.path}
-              className={`sidebar-link ${index === 0 ? 'active' : ''}`}
-            >
-              <span className="menu-icon">{item.icon}</span>
-              {item.name}
-            </Link>
-          ))}
+          <Link to="/" className="sidebar-link">
+            <span className="menu-icon">🏠</span>
+            <span>Back to Home</span>
+          </Link>
+
+          <Link to="/customer/home" className="sidebar-link active">
+            <span className="menu-icon">⌂</span>
+            <span>Dashboard</span>
+          </Link>
+
+          <Link to="/customer/post-job" className="sidebar-link">
+            <span className="menu-icon">+</span>
+            <span>Post New Job</span>
+          </Link>
+
+          <Link to="/customer/tracking" className="sidebar-link">
+            <span className="menu-icon">⌖</span>
+            <span>Live Tracking</span>
+          </Link>
+
+          <Link to="/customer/equipment-bill" className="sidebar-link">
+            <span className="menu-icon">🧾</span>
+            <span>Equipment Bills</span>
+          </Link>
+
+          <Link to="/customer/payment" className="sidebar-link">
+            <span className="menu-icon">Rs</span>
+            <span>Payments</span>
+          </Link>
+
+          <Link to="/customer/review" className="sidebar-link">
+            <span className="menu-icon">☆</span>
+            <span>My Reviews</span>
+          </Link>
         </nav>
 
         <div className="sidebar-emergency">
-          <p>Need urgent help?</p>
-          <Link to="/customer/emergency">
-            Emergency SOS
-          </Link>
+          <p>Urgent power failure or electrical hazard?</p>
+          <Link to="/customer/emergency">🚨 Emergency SOS</Link>
         </div>
       </aside>
 
       {/* Main Content */}
       <main className="customer-main">
-
-        <header className="customer-header">
+        <div className="customer-header">
           <div>
             <h2>Customer Dashboard</h2>
             <p>Manage your electrical services in one place.</p>
           </div>
 
-          <div className="customer-profile">
-            <div className="profile-avatar">C</div>
-            <div>
-              <strong>Customer</strong>
-              <small>Customer Account</small>
-            </div>
-          </div>
-        </header>
+          <Link
+            to="/"
+            className="secondary-button"
+            style={{ marginRight: '175px', padding: '9px 16px', fontSize: '13px' }}
+          >
+            ← Back to Home
+          </Link>
+        </div>
 
-        <section className="welcome-banner">
+        {/* Welcome Banner */}
+        <div className="welcome-banner">
           <div>
-            <p className="welcome-small">WELCOME TO ELECTROSL</p>
-            <h1>Hello, Welcome Back!</h1>
-            <p>Find trusted electricians and manage your service requests easily.</p>
+            <span className="welcome-small">WELCOME TO ELECTROSL</span>
+            <h1>Hello, {customerName}!</h1>
+            <p>
+              Post your electrical job request and a nearby certified electrician will accept and attend.
+            </p>
             <Link to="/customer/post-job" className="welcome-button">
               + Post a New Job
             </Link>
           </div>
           <div className="welcome-icon">⚡</div>
-        </section>
+        </div>
 
-        {/* Summary Cards */}
-        <section className="stats-grid">
-          {stats.map((stat) => (
-            <div className="stat-card" key={stat.title}>
-              <div className="stat-icon">{stat.icon}</div>
-              <div>
-                <p>{stat.title}</p>
-                <h2>{stat.value}</h2>
-              </div>
+        {/* Statistics */}
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon">📋</div>
+            <div>
+              <p>Total Jobs</p>
+              <h2>05</h2>
             </div>
-          ))}
-        </section>
+          </div>
 
-        {/* Quick Actions */}
+          <div className="stat-card">
+            <div className="stat-icon">⚡</div>
+            <div>
+              <p>Active Jobs</p>
+              <h2>02</h2>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon">🕒</div>
+            <div>
+              <p>Open Requests</p>
+              <h2>01</h2>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon">✓</div>
+            <div>
+              <p>Completed Jobs</p>
+              <h2>02</h2>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions (Quotations removed) */}
         <section className="dashboard-section">
           <div className="section-heading">
             <h2>Quick Actions</h2>
@@ -105,21 +136,21 @@ function CustomerHome() {
 
           <div className="quick-actions-grid">
             <Link to="/customer/post-job" className="action-card">
-              <span>＋</span>
+              <span>+</span>
               <strong>Post New Job</strong>
-              <small>Request an electrician</small>
-            </Link>
-
-            <Link to="/customer/bids" className="action-card">
-              <span>▤</span>
-              <strong>View Bids</strong>
-              <small>Compare quotations</small>
+              <small>Request a certified electrician</small>
             </Link>
 
             <Link to="/customer/tracking" className="action-card">
               <span>⌖</span>
-              <strong>Track Job</strong>
-              <small>Check job progress</small>
+              <strong>Live Tracking</strong>
+              <small>Check electrician arrival &amp; progress</small>
+            </Link>
+
+            <Link to="/customer/equipment-bill" className="action-card">
+              <span>🧾</span>
+              <strong>Equipment Bills</strong>
+              <small>Review &amp; approve material items</small>
             </Link>
 
             <Link to="/customer/emergency" className="action-card emergency-card">
@@ -133,42 +164,31 @@ function CustomerHome() {
         {/* Recent Jobs */}
         <section className="dashboard-section">
           <div className="section-heading">
-            <h2>Recent Job Activity</h2>
-            <p>Your latest service requests.</p>
+            <h2>Recent Service Requests</h2>
+            <p>Track the status of your recent jobs.</p>
           </div>
 
           <div className="recent-job-card">
             <div>
-              <strong>Electrical Wiring Repair</strong>
-              <p>Sample job • Colombo</p>
+              <strong>Ceiling Fan Repair &amp; Regulator Replacement</strong>
+              <p>Dispatched to nearby verified electricians</p>
             </div>
-            <span className="status-badge pending">Pending</span>
+            <span className="status-badge ongoing">Accepted</span>
           </div>
 
           <div className="recent-job-card">
             <div>
-              <strong>Ceiling Fan Installation</strong>
-              <p>Sample job • Kandy</p>
-            </div>
-            <span className="status-badge ongoing">In Progress</span>
-          </div>
-
-          <div className="recent-job-card">
-            <div>
-              <strong>Light Replacement</strong>
-              <p>Sample job • Gampaha</p>
+              <strong>Main Distribution Board Inspection</strong>
+              <p>Completed with OTP verification</p>
             </div>
             <span className="status-badge completed">Completed</span>
           </div>
         </section>
 
         <footer className="customer-footer">
-          © 2026 ElectroSL. All rights reserved.
+          © {new Date().getFullYear()} ElectroSL • Certified Electrical Service Platform
         </footer>
-
       </main>
     </div>
   );
 }
-
-export default CustomerHome;

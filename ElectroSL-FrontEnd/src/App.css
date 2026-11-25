@@ -1,4 +1,3 @@
-
 /* ElectroSL - Global Application Styling */
 
 :root {
@@ -18,6 +17,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: #F3F6FA;
+  color: #26364A;
 }
 
 button,
@@ -658,7 +658,21 @@ a {
   border-radius: 7px;
   font-size: 15px;
   font-family: inherit;
-  background: white;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a;
+}
+
+.job-form-section input::placeholder,
+.job-form-section textarea::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b;
+  opacity: 1;
+}
+
+.job-form-section select option {
+  color: #0f172a;
+  background: #ffffff;
 }
 
 .job-form-section input:focus,
@@ -926,7 +940,7 @@ a {
   padding: 25px;
   border-radius: 12px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .emergency-section h2 {
@@ -952,6 +966,7 @@ a {
   font-size: 15px;
   font-family: inherit;
   background: white;
+  color: #0f172a;
 }
 
 .emergency-section input:focus,
@@ -959,7 +974,7 @@ a {
 .emergency-section textarea:focus {
   outline: none;
   border-color: #dc2626;
-  box-shadow: 0 0 0 2px rgba(220,38,38,0.1);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1);
 }
 
 .emergency-location-success {
@@ -1044,7 +1059,7 @@ a {
   background: white;
   padding: 20px;
   border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .bids-job-summary span,
@@ -1069,7 +1084,7 @@ a {
   background: white;
   padding: 25px;
   border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
 }
 
@@ -1230,7 +1245,7 @@ a {
   background: white;
   padding: 20px;
   border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .tracking-job-info span,
@@ -1251,7 +1266,7 @@ a {
   padding: 25px;
   border-radius: 12px;
   margin-bottom: 22px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .tracking-section h2 {
@@ -1449,7 +1464,7 @@ a {
   background: white;
   padding: 20px;
   border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .equipment-job-summary span {
@@ -1480,7 +1495,7 @@ a {
   background: white;
   padding: 25px;
   border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   margin-bottom: 22px;
 }
 
@@ -1886,6 +1901,8 @@ a {
   font-size: 14px;
   resize: vertical;
   outline: none;
+  color: #0f172a;
+  background: #ffffff;
 }
 
 .review-text-section textarea:focus {
@@ -1954,6 +1971,7 @@ body,
     font-size: 32px;
   }
 }
+
 /* Electrician Dashboard */
 
 .electrician-dashboard {
@@ -2505,6 +2523,8 @@ body,
   font-size: 14px;
   font-family: inherit;
   box-sizing: border-box;
+  color: #0f172a;
+  background: #ffffff;
 }
 
 .quotation-form input:focus,
@@ -2710,6 +2730,8 @@ body,
   border-radius: 6px;
   font-size: 16px;
   letter-spacing: 3px;
+  color: #0f172a;
+  background: #ffffff;
 }
 
 .otp-card button {
@@ -2797,6 +2819,8 @@ body,
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-size: 14px;
+  color: #0f172a;
+  background: #ffffff;
 }
 
 .equipment-inputs button,
@@ -2864,7 +2888,6 @@ body,
 }
 
 
-
 /* Digital Portfolio */
 
 .portfolio-page {
@@ -2914,6 +2937,8 @@ body,
   border-radius: 6px;
   font-size: 14px;
   font-family: inherit;
+  color: #0f172a;
+  background: #ffffff;
 }
 
 .portfolio-form-card button {
@@ -3084,11 +3109,11 @@ body,
 }
 
 
-/* Electrician Sign Up Page */
+/* Electrician Sign Up Page — Navy Blue, White, Black & Silver Theme */
 
 .signup-container {
   min-height: 100vh;
-  background: #f4f7fb;
+  background: linear-gradient(155deg, #060b14 0%, #0b2545 55%, #1e293b 100%);
   padding: 40px 20px;
   display: flex;
   justify-content: center;
@@ -3099,27 +3124,28 @@ body,
   background: #ffffff;
   width: 100%;
   max-width: 700px;
-  padding: 35px;
-  border-radius: 14px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 36px;
+  border-radius: 16px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 20px 45px rgba(6, 11, 20, 0.35);
 }
 
 .signup-card h1 {
   text-align: center;
-  color: #123b63;
+  color: #060b14;
   margin-bottom: 8px;
 }
 
 .signup-card > p {
   text-align: center;
-  color: #64748b;
+  color: #475569;
   margin-bottom: 30px;
 }
 
 .signup-card h3 {
-  color: #123b63;
+  color: #0b2545;
   margin: 25px 0 15px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #cbd5e1;
   padding-bottom: 8px;
 }
 
@@ -3129,11 +3155,12 @@ body,
   width: 100%;
   padding: 12px;
   margin-bottom: 16px;
-  border: 1px solid #cbd5e1;
-  border-radius: 7px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
   font-size: 14px;
   box-sizing: border-box;
-  background: #fff;
+  background: #ffffff;
+  color: #060b14;
 }
 
 .signup-card textarea {
@@ -3144,32 +3171,34 @@ body,
 .signup-card label {
   display: block;
   margin-bottom: 8px;
-  color: #334155;
+  color: #0b2545;
   font-weight: 600;
 }
 
 .signup-card button {
   width: 100%;
   padding: 14px;
-  background: #087c55;
-  color: white;
-  border: none;
-  border-radius: 7px;
+  background: linear-gradient(135deg, #0b2545 0%, #163a6b 100%);
+  color: #ffffff;
+  border: 1px solid #0b2545;
+  border-radius: 8px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  transition: background 0.2s;
 }
 
 .signup-card button:hover {
-  background: #066342;
+  background: #060b14;
+  border-color: #060b14;
 }
 
 .signup-card input:focus,
 .signup-card select:focus,
 .signup-card textarea:focus {
   outline: none;
-  border-color: #087c55;
-  box-shadow: 0 0 0 2px rgba(8, 124, 85, 0.12);
+  border-color: #0b2545;
+  box-shadow: 0 0 0 3px rgba(11, 37, 69, 0.14);
 }
 
 @media (max-width: 600px) {
@@ -3185,26 +3214,27 @@ body,
 .signup-login-link {
   text-align: center;
   margin-top: 20px;
-  color: #64748b;
+  color: #475569;
   font-size: 14px;
 }
 
 .signup-login-link a {
-  color: #087c55;
-  font-weight: 600;
+  color: #0b2545;
+  font-weight: 700;
   text-decoration: none;
 }
 
 .signup-login-link a:hover {
+  color: #060b14;
   text-decoration: underline;
 }
 
 
-/* Electrician Login Page */
+/* Electrician Login Page — Navy Blue, White, Black & Silver Theme */
 
 .login-container {
   min-height: 100vh;
-  background: #f4f7fb;
+  background: linear-gradient(155deg, #060b14 0%, #0b2545 55%, #1e293b 100%);
   padding: 40px 20px;
   display: flex;
   justify-content: center;
@@ -3216,28 +3246,29 @@ body,
   width: 100%;
   max-width: 450px;
   padding: 40px 35px;
-  border-radius: 14px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 20px 45px rgba(6, 11, 20, 0.35);
 }
 
 .login-card h1 {
   text-align: center;
-  color: #123b63;
+  color: #060b14;
   font-size: 30px;
   margin-bottom: 10px;
 }
 
 .login-subtitle {
   text-align: center;
-  color: #087c55;
+  color: #0b2545;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 6px;
 }
 
 .login-description {
   text-align: center;
-  color: #64748b;
+  color: #475569;
   font-size: 14px;
   margin-bottom: 30px;
 }
@@ -3245,7 +3276,7 @@ body,
 .login-card label {
   display: block;
   margin-bottom: 8px;
-  color: #334155;
+  color: #0b2545;
   font-weight: 600;
 }
 
@@ -3254,47 +3285,52 @@ body,
   box-sizing: border-box;
   padding: 13px;
   margin-bottom: 20px;
-  border: 1px solid #cbd5e1;
-  border-radius: 7px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
   font-size: 14px;
+  color: #060b14;
+  background: #ffffff;
 }
 
 .login-card input:focus {
   outline: none;
-  border-color: #087c55;
-  box-shadow: 0 0 0 2px rgba(8, 124, 85, 0.12);
+  border-color: #0b2545;
+  box-shadow: 0 0 0 3px rgba(11, 37, 69, 0.14);
 }
 
 .login-card button {
   width: 100%;
   padding: 14px;
-  background: #087c55;
-  color: white;
-  border: none;
-  border-radius: 7px;
+  background: linear-gradient(135deg, #0b2545 0%, #163a6b 100%);
+  color: #ffffff;
+  border: 1px solid #0b2545;
+  border-radius: 8px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  transition: background 0.2s;
 }
 
 .login-card button:hover {
-  background: #066342;
+  background: #060b14;
+  border-color: #060b14;
 }
 
 .login-signup-link {
   text-align: center;
   margin-top: 24px;
-  color: #64748b;
+  color: #475569;
   font-size: 14px;
 }
 
 .login-signup-link a {
-  color: #087c55;
-  font-weight: 600;
+  color: #0b2545;
+  font-weight: 700;
   text-decoration: none;
 }
 
 .login-signup-link a:hover {
+  color: #060b14;
   text-decoration: underline;
 }
 

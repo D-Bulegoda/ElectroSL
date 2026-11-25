@@ -1,0 +1,119 @@
+.user-badge-wrapper {
+  position: fixed;
+  top: 16px;
+  right: 22px;
+  z-index: 1200;
+  font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+}
+
+.user-badge-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #060b14;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 6px 14px 6px 7px;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(6, 11, 20, 0.28);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.user-badge-pill:hover {
+  background: #0b2545;
+  border-color: #ffffff;
+}
+
+.user-badge-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+  color: #060b14;
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-badge-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.user-badge-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.user-badge-role {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.user-badge-menu {
+  margin-top: 8px;
+  width: 240px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 16px 36px rgba(6, 11, 20, 0.2);
+}
+
+.user-badge-menu-header {
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-badge-menu-header strong {
+  color: #060b14;
+  font-size: 0.9rem;
+}
+
+.user-badge-menu-header span {
+  color: #475569;
+  font-size: 0.78rem;
+}
+
+.user-badge-menu-header small {
+  color: #0b2545;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+.user-badge-menu button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #0b2545;
+  cursor: pointer;
+}
+
+.user-badge-menu button:hover {
+  background: #f1f5f9;
+  color: #060b14;
+}
+
+.user-badge-menu button.user-badge-logout {
+  margin-top: 6px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 10px;
+  color: #dc2626;
+}
