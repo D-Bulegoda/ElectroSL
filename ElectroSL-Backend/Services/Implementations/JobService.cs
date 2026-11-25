@@ -79,7 +79,7 @@ public class JobService : IJobService
         return job;
     }
 
-    public Task<bool> ApproveEquipmentListAsync(
+    public async Task<bool> ApproveEquipmentListAsync(
         int jobId,
         EquipmentListDto equipment)
     {

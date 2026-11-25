@@ -30,16 +30,10 @@ public class AdminController : ControllerBase
         _auditService = auditService;
     }
 
-    private int? GetCurrentAdminUserId()
+    private int GetCurrentAdminUserId()
     {
         var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (int.TryParse(idClaim, out var adminId))
-        {
-            return adminId;
-        }
-
-        return null;
+        return int.TryParse(idClaim, out var adminId) ? adminId : 0;
     }
 
     [HttpGet("applications")]

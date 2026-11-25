@@ -1,15 +1,15 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using ElectroSL_Backend.Data;
 using ElectroSL_Backend.DTOs.Auth;
 using ElectroSL_Backend.Models;
 using ElectroSL_Backend.Services.Interfaces;
+using ElectroSL_Backend.Utilities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Cryptography;
-
 
 namespace ElectroSL_Backend.Services.Implementations;
 
@@ -29,64 +29,27 @@ public class AuthService : IAuthService
         _passwordHasher = passwordHasher;
     }
 
-    public async Task<string> RegisterAsync(RegisterDto dto)
+    public async Task<User?> RegisterUserAsync(RegisterDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name) ||
-            string.IsNullOrWhiteSpace(dto.Email) ||
-            string.IsNullOrWhiteSpace(dto.Phone) ||
-            string.IsNullOrWhiteSpace(dto.Password))
-        {
-            throw new ArgumentException("All basic registration fields are required.");
-        }
-
-        if (dto.Password.Length < 8)
-            throw new ArgumentException("Password must contain at least 8 characters.");
-
-        string role = dto.Role.Trim();
-
-        if (role != "Customer" && role != "Electrician")
-            throw new ArgumentException("Only Customer and Electrician registration is allowed.");
-
-        if (role == "Electrician" &&
-            (string.IsNullOrWhiteSpace(dto.NvqCertificateUrl) ||
-             string.IsNullOrWhiteSpace(dto.NicDocumentUrl) ||
-             string.IsNullOrWhiteSpace(dto.Specialization)))
-        {
-            throw new ArgumentException(
-                "Electricians must provide NVQ certificate, NIC document and specialization.");
-        }
-
         string email = dto.Email.Trim().ToLowerInvariant();
 
         bool emailExists = await _context.Users
             .AnyAsync(u => u.Email.ToLower() == email);
 
         if (emailExists)
-            throw new InvalidOperationException("An account with this email already exists.");
+            return null;
+
+        string role = string.IsNullOrWhiteSpace(dto.Role) ? "Customer" : dto.Role.Trim();
 
         var user = new User
         {
             Name = dto.Name.Trim(),
             Email = email,
-            Phone = dto.Phone.Trim(),
+            Phone = dto.Phone?.Trim() ?? string.Empty,
             Role = role,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             CreatedAt = DateTime.UtcNow
         };
-
-        user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
-
-        if (role == "Electrician")
-        {
-            user.ElectricianProfile = new ElectricianProfile
-            {
-                NvqCertificateUrl = dto.NvqCertificateUrl!.Trim(),
-                NicDocumentUrl = dto.NicDocumentUrl!.Trim(),
-                Specialization = dto.Specialization!.Trim(),
-                VerificationStatus = "Pending",
-                IsApprovedByAdmin = false,
-                IsOnline = false
-            };
-        }
 
         // Generate a secure 6-digit OTP
         string otpCode = RandomNumberGenerator
@@ -96,22 +59,18 @@ public class AuthService : IAuthService
         user.OtpCodeHash = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(otpCode))
         );
-
         user.OtpExpiryUtc = DateTime.UtcNow.AddMinutes(5);
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        return "Registration successful. OTP verification is required.";
+        return user;
     }
 
-    public async Task<string> LoginAsync(string email, string password)
+    public async Task<AuthResponseDto?> LoginAsync(string email, string password)
     {
-        if (string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(password))
-        {
-            throw new UnauthorizedAccessException("Invalid email or password.");
-        }
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            return null;
 
         string normalizedEmail = email.Trim().ToLowerInvariant();
 
@@ -119,25 +78,31 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
 
         if (user == null)
-            throw new UnauthorizedAccessException("Invalid email or password.");
+            return null;
 
-        var result = _passwordHasher.VerifyHashedPassword(
-            user, user.PasswordHash, password);
+        bool isPasswordValid = user.PasswordHash.StartsWith("$2")
+            ? BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)
+            : _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password) != PasswordVerificationResult.Failed;
 
-        if (result == PasswordVerificationResult.Failed)
-            throw new UnauthorizedAccessException("Invalid email or password.");
+        if (!isPasswordValid)
+            return null;
+
+       if (!user.IsActive || user.AccountStatus != "Active")
+        {
+            throw new AccountStatusException(
+                user.AccountStatus,
+                user.SuspensionReason,
+                $"Your account is {user.AccountStatus.ToLowerInvariant()}.");
+        }
 
         var jwtSettings = _configuration.GetSection("JwtSettings");
 
         string secretKey = jwtSettings["SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey is missing.");
-
         string issuer = jwtSettings["Issuer"]
             ?? throw new InvalidOperationException("JWT Issuer is missing.");
-
         string audience = jwtSettings["Audience"]
             ?? throw new InvalidOperationException("JWT Audience is missing.");
-
         int expiryMinutes = int.TryParse(
             jwtSettings["ExpiryMinutes"], out int minutes) ? minutes : 120;
 
@@ -149,11 +114,8 @@ public class AuthService : IAuthService
             new Claim(ClaimTypes.Role, user.Role)
         };
 
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(secretKey));
-
-        var credentials = new SigningCredentials(
-            key, SecurityAlgorithms.HmacSha256);
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
             issuer: issuer,
@@ -162,10 +124,17 @@ public class AuthService : IAuthService
             expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
             signingCredentials: credentials);
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return new AuthResponseDto
+        {
+            Token = new JwtSecurityTokenHandler().WriteToken(token),
+            UserId = user.UserId,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role
+        };
     }
 
-   public async Task<bool> VerifyOtpAsync(int userId, string otpCode)
+    public async Task<bool> VerifyOtpAsync(int userId, string otpCode)
     {
         if (string.IsNullOrWhiteSpace(otpCode))
             return false;
