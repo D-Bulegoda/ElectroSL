@@ -1,9 +1,15 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using ElectroSL_Backend.Data;
 using ElectroSL_Backend.DTOs.Auth;
 using ElectroSL_Backend.Models;
 using ElectroSL_Backend.Services.Interfaces;
 using ElectroSL_Backend.Utilities;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ElectroSL_Backend.Services.Implementations;
 
@@ -11,161 +17,167 @@ public class AuthService : IAuthService
 {
     private readonly ElectroSLDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IPasswordHasher<User> _passwordHasher;
 
-    public AuthService(ElectroSLDbContext context, IConfiguration configuration)
+    public AuthService(
+        ElectroSLDbContext context,
+        IConfiguration configuration,
+        IPasswordHasher<User> passwordHasher)
     {
         _context = context;
         _configuration = configuration;
+        _passwordHasher = passwordHasher;
+    }
+
+    public async Task<User?> RegisterUserAsync(RegisterDto dto)
+    {
+        string email = dto.Email.Trim().ToLowerInvariant();
+
+        bool emailExists = await _context.Users
+            .AnyAsync(u => u.Email.ToLower() == email);
+
+        if (emailExists)
+            return null;
+
+        string role = string.IsNullOrWhiteSpace(dto.Role) ? "Customer" : dto.Role.Trim();
+
+        var user = new User
+        {
+            Name = dto.Name.Trim(),
+            Email = email,
+            Phone = dto.Phone?.Trim() ?? string.Empty,
+            Role = role,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Generate a secure 6-digit OTP
+        string otpCode = RandomNumberGenerator
+            .GetInt32(100000, 1000000)
+            .ToString();
+
+        user.OtpCodeHash = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(otpCode))
+        );
+        user.OtpExpiryUtc = DateTime.UtcNow.AddMinutes(5);
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        return user;
     }
 
     public async Task<AuthResponseDto?> LoginAsync(string email, string password)
     {
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
-        {
             return null;
-        }
 
-        var normalizedEmail = email.Trim().ToLowerInvariant();
+        string normalizedEmail = email.Trim().ToLowerInvariant();
+
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
 
         if (user == null)
-        {
             return null;
-        }
 
-        bool isPasswordValid = false;
-        try
-        {
-            isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
-        }
-        catch (Exception)
-        {
-            // In case of invalid salt format in legacy record, verification fails securely
-            isPasswordValid = false;
-        }
+        bool isPasswordValid = user.PasswordHash.StartsWith("$2")
+            ? BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)
+            : _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password) != PasswordVerificationResult.Failed;
 
         if (!isPasswordValid)
-        {
             return null;
-        }
 
-        // Account status enforcement: Inactive and suspended users cannot log in
-        if (!user.IsActive || user.AccountStatus == "Suspended" || user.AccountStatus == "Inactive")
+       if (!user.IsActive || user.AccountStatus != "Active")
         {
-            var status = user.AccountStatus ?? "Inactive";
-            var reason = !string.IsNullOrWhiteSpace(user.SuspensionReason)
-                ? user.SuspensionReason
-                : "Your account is not active. Please contact customer support.";
-            throw new AccountStatusException(status, user.SuspensionReason, $"Account is {status.ToLowerInvariant()}. {reason}");
+            throw new AccountStatusException(
+                user.AccountStatus,
+                user.SuspensionReason,
+                $"Your account is {user.AccountStatus.ToLowerInvariant()}.");
         }
 
-        var secretKey = _configuration["JwtSettings:SecretKey"] 
-            ?? "ElectroSL_Super_Secret_Key_Must_Be_At_Least_32_Chars_Long!";
-        var issuer = _configuration["JwtSettings:Issuer"] ?? "ElectroSL";
-        var audience = _configuration["JwtSettings:Audience"] ?? "ElectroSL_Clients";
-        var expiryMinutes = 120;
-        if (int.TryParse(_configuration["JwtSettings:ExpiryMinutes"], out var parsedExpiry))
+        var jwtSettings = _configuration.GetSection("JwtSettings");
+
+        string secretKey = jwtSettings["SecretKey"]
+            ?? throw new InvalidOperationException("JWT SecretKey is missing.");
+        string issuer = jwtSettings["Issuer"]
+            ?? throw new InvalidOperationException("JWT Issuer is missing.");
+        string audience = jwtSettings["Audience"]
+            ?? throw new InvalidOperationException("JWT Audience is missing.");
+        int expiryMinutes = int.TryParse(
+            jwtSettings["ExpiryMinutes"], out int minutes) ? minutes : 120;
+
+        var claims = new[]
         {
-            expiryMinutes = parsedExpiry;
-        }
+            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+            new Claim(ClaimTypes.Name, user.Name),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role)
+        };
 
-        var token = JwtTokenGenerator.GenerateToken(
-            user.UserId,
-            user.Email,
-            user.Role,
-            secretKey,
-            issuer,
-            audience,
-            expiryMinutes
-        );
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
+            signingCredentials: credentials);
 
         return new AuthResponseDto
         {
-            Token = token,
-            Role = user.Role,
+            Token = new JwtSecurityTokenHandler().WriteToken(token),
             UserId = user.UserId,
             Name = user.Name,
-            Email = user.Email
+            Email = user.Email,
+            Role = user.Role
         };
     }
 
     public async Task<bool> VerifyOtpAsync(int userId, string otpCode)
     {
-        if (string.IsNullOrWhiteSpace(otpCode)) return false;
+        if (string.IsNullOrWhiteSpace(otpCode))
+            return false;
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-        if (user == null) return false;
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.UserId == userId);
 
-        // If OTP expired, reject
-        if (user.OtpExpiryUtc.HasValue && user.OtpExpiryUtc.Value < DateTime.UtcNow)
+        if (user == null || user.IsPhoneVerified)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(user.OtpCodeHash) ||
+            user.OtpExpiryUtc == null)
+            return false;
+
+        if (DateTime.UtcNow > user.OtpExpiryUtc.Value)
+            return false;
+
+        string hashedOtp = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(otpCode.Trim()))
+        );
+
+        byte[] storedHash;
+        byte[] enteredHash;
+
+        try
+        {
+            storedHash = Convert.FromHexString(user.OtpCodeHash);
+            enteredHash = Convert.FromHexString(hashedOtp);
+        }
+        catch (FormatException)
         {
             return false;
         }
 
-        bool isValid = false;
-        if (!string.IsNullOrWhiteSpace(user.OtpCodeHash))
-        {
-            try
-            {
-                isValid = BCrypt.Net.BCrypt.Verify(otpCode, user.OtpCodeHash);
-            }
-            catch
-            {
-                isValid = false;
-            }
-        }
+        if (!CryptographicOperations.FixedTimeEquals(storedHash, enteredHash))
+            return false;
 
-        if (isValid)
-        {
-            user.IsPhoneVerified = true;
-            user.OtpCodeHash = null;
-            user.OtpExpiryUtc = null;
-            await _context.SaveChangesAsync();
-        }
+        user.IsPhoneVerified = true;
+        user.OtpCodeHash = null;
+        user.OtpExpiryUtc = null;
 
-        return isValid;
-    }
-
-    public async Task<User?> RegisterUserAsync(RegisterDto dto)
-    {
-        if (dto == null || string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
-        {
-            return null;
-        }
-
-        var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
-        bool exists = await _context.Users.AnyAsync(u => u.Email.ToLower() == normalizedEmail);
-        if (exists)
-        {
-            return null;
-        }
-
-        var user = new User
-        {
-            Name = dto.Name?.Trim() ?? string.Empty,
-            Email = normalizedEmail,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Role = string.IsNullOrWhiteSpace(dto.Role) ? "Customer" : dto.Role,
-            Phone = dto.Phone?.Trim() ?? string.Empty,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        if (user.Role == "Electrician")
-        {
-            var profile = new ElectricianProfile
-            {
-                UserId = user.UserId,
-                VerificationStatus = "Pending",
-                Specialization = "General Electrician"
-            };
-            _context.ElectricianProfiles.Add(profile);
-            await _context.SaveChangesAsync();
-        }
-
-        return user;
+        return true;
     }
 }

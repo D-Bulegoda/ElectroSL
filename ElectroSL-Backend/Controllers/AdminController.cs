@@ -32,16 +32,8 @@ public class AdminController : ControllerBase
 
     private int GetCurrentAdminUserId()
     {
-        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                      ?? User.FindFirst("sub")?.Value 
-                      ?? User.FindFirst("id")?.Value;
-
-        if (int.TryParse(idClaim, out var adminId))
-        {
-            return adminId;
-        }
-
-        return 1; // Default fallback for local development or seed admin
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return int.TryParse(idClaim, out var adminId) ? adminId : 0;
     }
 
     [HttpGet("applications")]

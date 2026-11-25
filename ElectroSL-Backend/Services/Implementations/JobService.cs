@@ -24,10 +24,64 @@ public class JobService : IJobService
 
     public async Task<Job> CreateJobAsync(CreateJobDto jobDto)
     {
-        return await Task.FromResult(new Job { JobType = jobDto.JobType });
+        if (jobDto == null)
+            throw new ArgumentNullException(nameof(jobDto));
+
+        if (jobDto.CustomerId <= 0)
+            throw new ArgumentException("Invalid customer ID.");
+
+        if (string.IsNullOrWhiteSpace(jobDto.Description))
+            throw new ArgumentException("Job description is required.");
+
+        if (jobDto.LocationLat < -90 || jobDto.LocationLat > 90)
+            throw new ArgumentException("Invalid latitude.");
+
+        if (jobDto.LocationLng < -180 || jobDto.LocationLng > 180)
+            throw new ArgumentException("Invalid longitude.");
+
+        var jobType = jobDto.JobType.Trim();
+
+        if (!jobType.Equals("Maintenance", StringComparison.OrdinalIgnoreCase) &&
+            !jobType.Equals("NewConstruction", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Invalid job type.");
+        }
+
+        var customerExists = await _context.Users
+            .AnyAsync(u =>
+                u.UserId == jobDto.CustomerId &&
+                u.Role == "Customer");
+
+        if (!customerExists)
+            throw new InvalidOperationException("Customer not found.");
+
+        var job = new Job
+        {
+            CustomerId = jobDto.CustomerId,
+
+            JobType = jobType.Equals(
+                "Maintenance",
+                StringComparison.OrdinalIgnoreCase)
+                    ? "Maintenance"
+                    : "NewConstruction",
+
+            Description = jobDto.Description.Trim(),
+            LocationLat = jobDto.LocationLat,
+            LocationLng = jobDto.LocationLng,
+            IsEmergency = jobDto.IsEmergency,
+            Status = "Pending",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Jobs.Add(job);
+        await _context.SaveChangesAsync();
+
+        return job;
     }
 
-    public async Task<bool> ApproveEquipmentListAsync(int jobId, EquipmentListDto equipment)
+    public async Task<bool> ApproveEquipmentListAsync(
+        int jobId,
+        EquipmentListDto equipment)
     {
         if (equipment?.Items == null || equipment.Items.Count == 0)
         {

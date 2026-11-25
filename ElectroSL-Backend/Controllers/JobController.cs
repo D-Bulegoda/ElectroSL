@@ -26,10 +26,14 @@ public class JobController : ControllerBase
     }
 
     [HttpGet("nearby")]
-    public IActionResult GetNearbyJobs([FromQuery] double lat, [FromQuery] double lng)
+    public IActionResult GetNearbyJobs(
+        [FromQuery] double lat,
+        [FromQuery] double lng)
     {
-        // Haversine formula logic goes here to find jobs within 10km
-        return Ok(new { message = "Returning jobs within 10km radius" });
+        return Ok(new
+        {
+            message = "Nearby job listing is not implemented yet."
+        });
     }
 
     [Authorize]

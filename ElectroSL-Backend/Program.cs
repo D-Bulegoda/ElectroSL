@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using ElectroSL_Backend.Models;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -154,6 +156,8 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader()
             .AllowCredentials());
 });
+
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 var app = builder.Build();
 
