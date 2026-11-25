@@ -9,4 +9,6 @@ public interface IAuthService
     Task<AuthResponseDto?> LoginAsync(string email, string password);
     Task<bool> VerifyOtpAsync(int userId, string otpCode);
     Task<RegistrationResultDto?> RegisterUserAsync(RegisterDto dto);
+
+    Task<string?> GenerateOtpAsync(int userId);
 }

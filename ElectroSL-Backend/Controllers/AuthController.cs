@@ -108,6 +108,7 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    
     [HttpPost("register-electrician")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> RegisterElectrician(
@@ -189,6 +190,16 @@ public class AuthController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
+        var otpCode = await _authService.GenerateOtpAsync(user.UserId);
+
+        if (otpCode == null)
+        {
+            return StatusCode(500, new
+            {
+                message = "Failed to generate OTP."
+            });
+        }
+
         var profile = new ElectricianProfile
         {
             UserId = user.UserId,
@@ -201,15 +212,23 @@ public class AuthController : ControllerBase
         _context.ElectricianProfiles.Add(profile);
         await _context.SaveChangesAsync();
 
-        return Ok(new
+        var response = new Dictionary<string, object>
         {
-            success = true,
-            userId = user.UserId,
-            profileId = profile.ProfileId,
-            message =
-                "Electrician registration submitted successfully. Application is pending admin review."
-        });
+            ["success"] = true,
+            ["userId"] = user.UserId,
+            ["profileId"] = profile.ProfileId,
+            ["message"] =
+                "Electrician registration submitted successfully. Please verify your phone number. Your application is pending admin review."
+        };
+
+        if (_environment.IsDevelopment())
+        {
+            response["dummyOtp"] = otpCode;
+        }
+
+        return Ok(response);
     }
+
 
     [HttpPost("verify-otp")]
     public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
@@ -223,7 +242,7 @@ public class AuthController : ControllerBase
                 message = "Valid user ID and OTP code are required."
             });
         }
-        
+
        var success = await _authService.VerifyOtpAsync(dto.UserId, dto.OtpCode);
 
         if (!success)

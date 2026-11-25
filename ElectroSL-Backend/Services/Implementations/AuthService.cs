@@ -139,6 +139,30 @@ public class AuthService : IAuthService
         };
     }
 
+    public async Task<string?> GenerateOtpAsync(int userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+
+        if (user == null)
+        {
+            return null;
+        }
+
+        string otpCode = RandomNumberGenerator
+            .GetInt32(100000, 1000000)
+            .ToString();
+
+        user.OtpCodeHash = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(otpCode))
+        );
+
+        user.OtpExpiryUtc = DateTime.UtcNow.AddMinutes(5);
+
+        await _context.SaveChangesAsync();
+
+        return otpCode;
+    }
+
     public async Task<bool> VerifyOtpAsync(int userId, string otpCode)
     {
         if (string.IsNullOrWhiteSpace(otpCode))
