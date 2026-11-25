@@ -27,7 +27,6 @@ import SubmitReview from '../pages/Customer/SubmitReview';
 import ElectricianDashboard from '../pages/Electrician/ElectricianDashboard';
 import ToggleAvailability from '../pages/Electrician/ToggleAvailability';
 import IncomingJobAlerts from '../pages/Electrician/IncomingJobAlerts';
-import SubmitQuotationBid from '../pages/Electrician/SubmitQuotationBid';
 import ActiveJobExecution from '../pages/Electrician/ActiveJobExecution';
 import OTPStartWork from '../pages/Electrician/OTPStartWork';
 import SubmitEquipmentList from '../pages/Electrician/SubmitEquipmentList';
@@ -51,17 +50,34 @@ import MockPaymentGateway from '../components/payments/MockPaymentGateway';
 import NotificationBell from '../components/NotificationBell';
 import UserProfileBadge from '../components/UserProfileBadge';
 
-// Inline guard: requires a logged-in Customer profile before posting a job
-function RequireCustomerProfile({ children }) {
+// Inline guard: requires a logged-in Customer account
+function RequireCustomerProfile({ children, fallback = '/login' }) {
   const location = useLocation();
   const session = getAuthSession();
 
   if (!session?.token) {
     const target = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/signup?redirect=${target}`} replace />;
+    return <Navigate to={`${fallback}?redirect=${target}`} replace />;
   }
 
   if (session.role !== 'Customer') {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+// Inline guard: requires a logged-in Electrician account
+function RequireElectricianAuth({ children }) {
+  const location = useLocation();
+  const session = getAuthSession();
+
+  if (!session?.token) {
+    const target = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?redirect=${target}`} replace />;
+  }
+
+  if (session.role !== 'Electrician') {
     return <Navigate to="/login" replace />;
   }
 
@@ -116,35 +132,143 @@ function AppRoutes() {
         <Route path="/electrician/signup" element={<SignUpElectrician />} />
         <Route path="/signup-electrician" element={<SignUpElectrician />} />
 
-        {/* Customer Portal */}
-        <Route path="/customer/home" element={<CustomerHome />} />
+        {/* Customer Portal (Protected: Customer Login Required) */}
+        <Route
+          path="/customer/home"
+          element={
+            <RequireCustomerProfile>
+              <CustomerHome />
+            </RequireCustomerProfile>
+          }
+        />
         <Route
           path="/customer/post-job"
           element={
-            <RequireCustomerProfile>
+            <RequireCustomerProfile fallback="/signup">
               <PostNewJob />
             </RequireCustomerProfile>
           }
         />
-        <Route path="/customer/emergency" element={<EmergencySOS />} />
+        <Route
+          path="/customer/emergency"
+          element={
+            <RequireCustomerProfile>
+              <EmergencySOS />
+            </RequireCustomerProfile>
+          }
+        />
         {/* Redirect legacy bids route to live job tracking */}
         <Route path="/customer/bids" element={<Navigate replace to="/customer/tracking" />} />
-        <Route path="/customer/tracking" element={<LiveJobTracking />} />
-        <Route path="/customer/equipment-bill" element={<ApproveEquipmentBill />} />
-        <Route path="/customer/payment" element={<CheckoutPayment />} />
-        <Route path="/customer/review" element={<SubmitReview />} />
+        <Route
+          path="/customer/tracking"
+          element={
+            <RequireCustomerProfile>
+              <LiveJobTracking />
+            </RequireCustomerProfile>
+          }
+        />
+        <Route
+          path="/customer/equipment-bill"
+          element={
+            <RequireCustomerProfile>
+              <ApproveEquipmentBill />
+            </RequireCustomerProfile>
+          }
+        />
+        <Route
+          path="/customer/payment"
+          element={
+            <RequireCustomerProfile>
+              <CheckoutPayment />
+            </RequireCustomerProfile>
+          }
+        />
+        <Route
+          path="/customer/review"
+          element={
+            <RequireCustomerProfile>
+              <SubmitReview />
+            </RequireCustomerProfile>
+          }
+        />
 
-        {/* Electrician Portal */}
-        <Route path="/electrician/dashboard" element={<ElectricianDashboard />} />
-        <Route path="/electrician/availability" element={<ToggleAvailability />} />
-        <Route path="/electrician/jobs" element={<IncomingJobAlerts />} />
-        <Route path="/electrician/quotation" element={<SubmitQuotationBid />} />
-        <Route path="/electrician/active-jobs" element={<ActiveJobExecution />} />
-        <Route path="/electrician/otp-verification" element={<OTPStartWork />} />
-        <Route path="/electrician/equipment" element={<SubmitEquipmentList />} />
-        <Route path="/electrician/portfolio" element={<DigitalPortfolio />} />
-        <Route path="/electrician/wallet" element={<WalletAndEarnings />} />
-        <Route path="/electrician/simulator" element={<CircuitSimulator />} />
+        {/* Electrician Portal (Protected: Electrician Login Required) */}
+        <Route
+          path="/electrician/dashboard"
+          element={
+            <RequireElectricianAuth>
+              <ElectricianDashboard />
+            </RequireElectricianAuth>
+          }
+        />
+        <Route
+          path="/electrician/availability"
+          element={
+            <RequireElectricianAuth>
+              <ToggleAvailability />
+            </RequireElectricianAuth>
+          }
+        />
+        <Route
+          path="/electrician/jobs"
+          element={
+            <RequireElectricianAuth>
+              <IncomingJobAlerts />
+            </RequireElectricianAuth>
+          }
+        />
+        <Route
+          path="/electrician/quotation"
+          element={<Navigate replace to="/electrician/jobs" />}
+        />
+        <Route
+          path="/electrician/active-jobs"
+          element={
+            <RequireElectricianAuth>
+              <ActiveJobExecution />
+            </RequireElectricianAuth>
+          }
+        />
+        <Route
+          path="/electrician/otp-verification"
+          element={
+            <RequireElectricianAuth>
+              <OTPStartWork />
+            </RequireElectricianAuth>
+          }
+        />
+        <Route
+          path="/electrician/equipment"
+          element={
+            <RequireElectricianAuth>
+              <SubmitEquipmentList />
+            </RequireElectricianAuth>
+          }
+        />
+        <Route
+          path="/electrician/portfolio"
+          element={
+            <RequireElectricianAuth>
+              <DigitalPortfolio />
+            </RequireElectricianAuth>
+          }
+        />
+        <Route
+          path="/electrician/wallet"
+          element={
+            <RequireElectricianAuth>
+              <WalletAndEarnings />
+            </RequireElectricianAuth>
+          }
+        />
+        <Route
+          path="/electrician/simulator"
+          element={
+            <RequireElectricianAuth>
+              <CircuitSimulator />
+            </RequireElectricianAuth>
+          }
+        />
 
         {/* Mock Payment & SignalR Notification Test Route */}
         <Route
