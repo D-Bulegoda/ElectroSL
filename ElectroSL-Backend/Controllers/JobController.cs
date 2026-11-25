@@ -1,8 +1,11 @@
 using System.Security.Claims;
+using ElectroSL_Backend.Data;
 using ElectroSL_Backend.DTOs.Job;
+using ElectroSL_Backend.Models;
 using ElectroSL_Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectroSL_Backend.Controllers;
 
@@ -12,28 +15,185 @@ public class JobController : ControllerBase
 {
     private readonly IJobService _jobService;
     private readonly IDocumentStorageService _documentStorageService;
+    private readonly ElectroSLDbContext _context;
 
-    public JobController(IJobService jobService, IDocumentStorageService documentStorageService)
+    public JobController(
+        IJobService jobService,
+        IDocumentStorageService documentStorageService,
+        ElectroSLDbContext context)
     {
         _jobService = jobService;
         _documentStorageService = documentStorageService;
+        _context = context;
     }
 
+    // 1. Customer creates a new job (direct open dispatch, no bidding)
+    [Authorize(Roles = "Customer")]
     [HttpPost("create")]
-    public IActionResult CreateJob([FromBody] CreateJobDto request)
+    public async Task<IActionResult> CreateJob([FromBody] CreateJobDto request)
     {
-        return Ok(new { message = "Job created. 10km Dispatch logic runs here." });
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var tokenUserId = GetCurrentUserId();
+        var customerId = tokenUserId > 0 ? tokenUserId : request.CustomerId;
+
+        if (customerId <= 0)
+        {
+            return Unauthorized(new { message = "Valid customer authentication is required." });
+        }
+
+        var job = new Job
+        {
+            CustomerId = customerId,
+            JobType = string.IsNullOrWhiteSpace(request.JobType) ? "Maintenance" : request.JobType,
+            Description = request.Description,
+            LocationLat = request.LocationLat,
+            LocationLng = request.LocationLng,
+            IsEmergency = request.IsEmergency,
+            Status = "Open",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Jobs.Add(job);
+        await _context.SaveChangesAsync();
+
+        return StatusCode(201, new
+        {
+            message = "Job created and dispatched to nearby electricians.",
+            jobId = job.JobId,
+            job
+        });
     }
 
+    // 2. Electricians view all open jobs (or filter within 10 km when lat/lng are provided)
+    [Authorize(Roles = "Electrician")]
+    [HttpGet("open")]
     [HttpGet("nearby")]
-    public IActionResult GetNearbyJobs(
-        [FromQuery] double lat,
-        [FromQuery] double lng)
+    public async Task<IActionResult> GetNearbyOrOpenJobs(
+        [FromQuery] double? lat,
+        [FromQuery] double? lng,
+        [FromQuery] double radiusKm = 10.0)
     {
+        var openJobs = await _context.Jobs
+            .Where(j => j.Status == "Open" || j.Status == "Pending")
+            .OrderByDescending(j => j.IsEmergency)
+            .ThenByDescending(j => j.CreatedAt)
+            .ToListAsync();
+
+        if (lat.HasValue && lng.HasValue && (lat.Value != 0 || lng.Value != 0))
+        {
+            var nearby = openJobs
+                .Select(j => new
+                {
+                    job = j,
+                    distanceKm = Math.Round(CalculateDistanceKm(lat.Value, lng.Value, j.LocationLat, j.LocationLng), 2)
+                })
+                .Where(x => x.distanceKm <= radiusKm)
+                .OrderByDescending(x => x.job.IsEmergency)
+                .ThenBy(x => x.distanceKm)
+                .Select(x => new
+                {
+                    x.job.JobId,
+                    x.job.CustomerId,
+                    x.job.JobType,
+                    x.job.Description,
+                    x.job.LocationLat,
+                    x.job.LocationLng,
+                    x.job.IsEmergency,
+                    x.job.Status,
+                    x.job.CreatedAt,
+                    x.distanceKm
+                })
+                .ToList();
+
+            return Ok(nearby);
+        }
+
+        return Ok(openJobs);
+    }
+
+    // 3. Electrician directly accepts an open job (first-come, first-served lock)
+    [Authorize(Roles = "Electrician")]
+    [HttpPost("{jobId}/accept")]
+    public async Task<IActionResult> AcceptJob(int jobId, [FromBody] AcceptJobDto? dto = null)
+    {
+        var tokenUserId = GetCurrentUserId();
+        var electricianId = tokenUserId > 0 ? tokenUserId : (dto?.ElectricianId ?? 0);
+
+        if (electricianId <= 0)
+        {
+            return Unauthorized(new { message = "Valid electrician authentication is required." });
+        }
+
+        var job = await _context.Jobs.FindAsync(jobId);
+        if (job == null)
+        {
+            return NotFound(new { message = "Job not found." });
+        }
+
+        if (job.Status != "Open" && job.Status != "Pending")
+        {
+            return Conflict(new { message = "This job has already been accepted by another electrician." });
+        }
+
+        job.ElectricianId = electricianId;
+        job.Status = "Accepted";
+        await _context.SaveChangesAsync();
+
         return Ok(new
         {
-            message = "Nearby job listing is not implemented yet."
+            message = "Job accepted successfully. Proceed to job location.",
+            jobId = job.JobId,
+            job
         });
+    }
+
+    // 4. Live job status & details (for Customer LiveJobTracking & Electrician ActiveJobExecution)
+    [Authorize]
+    [HttpGet("{jobId}")]
+    public async Task<IActionResult> GetJobById(int jobId)
+    {
+        var job = await _context.Jobs.FindAsync(jobId);
+        if (job == null)
+        {
+            return NotFound(new { message = "Job not found." });
+        }
+
+        return Ok(job);
+    }
+
+    // 5. Fetch jobs belonging to the logged-in Customer or Electrician
+    [Authorize]
+    [HttpGet("my-jobs")]
+    public async Task<IActionResult> GetMyJobs()
+    {
+        var userId = GetCurrentUserId();
+        var role = GetCurrentUserRole();
+
+        if (userId <= 0)
+        {
+            return Unauthorized(new { message = "Invalid user session." });
+        }
+
+        var query = _context.Jobs.AsQueryable();
+
+        if (role == "Electrician")
+        {
+            query = query.Where(j => j.ElectricianId == userId);
+        }
+        else if (role == "Customer")
+        {
+            query = query.Where(j => j.CustomerId == userId);
+        }
+
+        var jobs = await query
+            .OrderByDescending(j => j.CreatedAt)
+            .ToListAsync();
+
+        return Ok(jobs);
     }
 
     [Authorize]
@@ -128,6 +288,20 @@ public class JobController : ControllerBase
         return User.FindFirst(ClaimTypes.Role)?.Value
             ?? User.FindFirst("role")?.Value
             ?? string.Empty;
+    }
+
+    private static double CalculateDistanceKm(double lat1, double lng1, double lat2, double lng2)
+    {
+        const double EarthRadiusKm = 6371.0;
+        var dLat = (lat2 - lat1) * Math.PI / 180.0;
+        var dLng = (lng2 - lng1) * Math.PI / 180.0;
+
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(lat1 * Math.PI / 180.0) * Math.Cos(lat2 * Math.PI / 180.0) *
+                Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
+
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return EarthRadiusKm * c;
     }
 
     private IActionResult MapSubmissionResult(EquipmentClaimSubmissionResult result)

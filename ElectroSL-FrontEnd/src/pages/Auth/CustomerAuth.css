@@ -1,0 +1,305 @@
+/* ElectroSL Authentication UI — Navy Blue, White, Black & Silver Theme */
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  background-color: #f1f5f9;
+  font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Left Panel: Deep Black & Navy Blue */
+.auth-visual-panel {
+  background: linear-gradient(155deg, #060b14 0%, #0b2545 58%, #13315c 100%);
+  color: #ffffff;
+  padding: 44px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid #1e293b;
+}
+
+.auth-visual-panel::after {
+  content: '';
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(203, 213, 225, 0.12) 0%, transparent 70%);
+  bottom: -110px;
+  right: -110px;
+  pointer-events: none;
+}
+
+.auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #ffffff;
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  z-index: 1;
+}
+
+/* Metallic Silver Badge with Black Bolt */
+.auth-brand-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+  border: 1px solid #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.auth-hero-content {
+  max-width: 440px;
+  z-index: 1;
+}
+
+.auth-hero-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(203, 213, 225, 0.12);
+  border: 1px solid rgba(203, 213, 225, 0.35);
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  margin-bottom: 20px;
+}
+
+.auth-hero-content h2 {
+  font-size: 2.35rem;
+  line-height: 1.18;
+  font-weight: 800;
+  margin: 0 0 16px;
+  color: #ffffff;
+}
+
+.auth-hero-content h2 span {
+  color: #cbd5e1;
+  border-bottom: 2px solid #94a3b8;
+}
+
+.auth-hero-content p {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #cbd5e1;
+  margin: 0;
+}
+
+.auth-visual-footer {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  z-index: 1;
+}
+
+/* Right Panel: Silver Surface & Pure White Card */
+.auth-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 28px;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 36px 38px;
+  box-shadow: 0 18px 40px rgba(6, 11, 20, 0.1);
+}
+
+.auth-card-header {
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 16px;
+}
+
+.auth-card-header h1 {
+  margin: 0 0 6px;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #060b14;
+}
+
+.auth-card-header p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #475569;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-field label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0b2545;
+}
+
+.auth-field input,
+.auth-field select,
+.auth-field textarea {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: 0.94rem;
+  color: #060b14 !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #060b14;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-field input::placeholder,
+.auth-field textarea::placeholder {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8;
+}
+
+.auth-field input:focus,
+.auth-field select:focus,
+.auth-field textarea:focus {
+  outline: none;
+  border-color: #0b2545;
+  box-shadow: 0 0 0 3px rgba(11, 37, 69, 0.14);
+}
+
+.auth-field-hint {
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.auth-location-box {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.auth-location-status {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0b2545;
+  margin-top: 8px;
+}
+
+/* Primary Action Button: Navy Blue to Black Hover */
+.auth-submit-btn {
+  margin-top: 6px;
+  width: 100%;
+  padding: 13px 20px;
+  border: 1px solid #0b2545;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0b2545 0%, #163a6b 100%);
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(11, 37, 69, 0.25);
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+
+.auth-submit-btn:hover:not(:disabled) {
+  background: #060b14;
+  border-color: #060b14;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(6, 11, 20, 0.32);
+}
+
+.auth-submit-btn:disabled {
+  background: #94a3b8;
+  border-color: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.auth-error {
+  background: #060b14;
+  border-left: 4px solid #ef4444;
+  color: #ffffff;
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  margin-bottom: 16px;
+}
+
+.auth-success {
+  background: #f1f5f9;
+  border-left: 4px solid #0b2545;
+  color: #060b14;
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.auth-footer-links {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+  font-size: 0.86rem;
+  color: #475569;
+}
+
+.auth-footer-links a {
+  color: #0b2545;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-footer-links a:hover {
+  color: #060b14;
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-visual-panel {
+    padding: 28px 24px;
+  }
+
+  .auth-hero-content h2 {
+    font-size: 1.8rem;
+  }
+
+  .auth-row {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Threading.Tasks;
 using ElectroSL_Backend.Data;
 using ElectroSL_Backend.DTOs.Electrician;
@@ -52,6 +53,8 @@ public class ElectricianController : ControllerBase
             simulatorPassed = latestSimulatorResult?.IsPassed ?? false,
             simulatorScore = latestSimulatorResult?.TotalScore ?? 0,
             isOnline = profile.IsOnline,
+            currentLat = profile.CurrentLat,
+            currentLng = profile.CurrentLng,
             technicalSkillRating = profile.TechnicalSkillRating,
             technicalSkillAssessmentNote = profile.TechnicalSkillAssessmentNote,
             technicalSkillRatedAt = profile.TechnicalSkillRatedAtUtc
@@ -89,6 +92,9 @@ public class ElectricianController : ControllerBase
             specialization = profile.Specialization,
             verificationStatus = profile.VerificationStatus,
             isApproved = profile.IsApprovedByAdmin,
+            isOnline = profile.IsOnline,
+            currentLat = profile.CurrentLat,
+            currentLng = profile.CurrentLng,
             // Admin Technical Skill Level (1-5, or null if not yet assessed)
             technicalSkillRating = profile.TechnicalSkillRating,
             technicalSkillAssessmentNote = profile.TechnicalSkillAssessmentNote,
@@ -119,6 +125,46 @@ public class ElectricianController : ControllerBase
         {
             hasUploadedCertificates = !string.IsNullOrWhiteSpace(profile.NvqCertificateUrl) && !string.IsNullOrWhiteSpace(profile.NicDocumentUrl),
             verificationStatus = profile.VerificationStatus
+        });
+    }
+
+    // Update electrician's live GPS location (used on signup, login, and manual refresh)
+    [HttpPut("location")]
+    [HttpPut("{id}/location")]
+    public async Task<IActionResult> UpdateCurrentLocation(int? id, [FromBody] UpdateLocationDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var tokenUserId = GetCurrentUserId();
+        var targetId = id ?? (dto.UserId > 0 ? dto.UserId : tokenUserId);
+
+        if (targetId <= 0)
+        {
+            return BadRequest(new { message = "A valid electrician userId or profileId is required." });
+        }
+
+        var profile = await _context.ElectricianProfiles
+            .FirstOrDefaultAsync(p => p.UserId == targetId || p.ProfileId == targetId);
+
+        if (profile == null)
+        {
+            return NotFound(new { message = $"Electrician profile not found for ID {targetId}." });
+        }
+
+        profile.CurrentLat = dto.Lat;
+        profile.CurrentLng = dto.Lng;
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Current location updated successfully.",
+            userId = profile.UserId,
+            profileId = profile.ProfileId,
+            lat = profile.CurrentLat,
+            lng = profile.CurrentLng
         });
     }
 
@@ -257,8 +303,8 @@ public class ElectricianController : ControllerBase
             })
             .ToListAsync();
 
-        decimal availablePayoutBalance = profile.OutstandingCommissionDebt > 0 
-            ? 0m 
+        decimal availablePayoutBalance = profile.OutstandingCommissionDebt > 0
+            ? 0m
             : Math.Max(0m, profile.AppWalletBalance);
 
         return Ok(new
@@ -272,5 +318,12 @@ public class ElectricianController : ControllerBase
             isPayoutLocked = profile.OutstandingCommissionDebt > 0,
             transactions
         });
+    }
+
+    private int GetCurrentUserId()
+    {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+        return int.TryParse(idClaim, out int userId) ? userId : 0;
     }
 }
