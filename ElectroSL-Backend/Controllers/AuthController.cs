@@ -70,6 +70,7 @@ public class AuthController : ControllerBase
         }
     }
 
+    
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
@@ -93,20 +94,14 @@ public class AuthController : ControllerBase
             });
         }
 
-        var response = new Dictionary<string, object>
+        return Ok(new
         {
-            ["success"] = true,
-            ["userId"] = result.User.UserId,
-            ["message"] = "Registration successful. Please verify your phone number."
-        };
-
-        if (_environment.IsDevelopment())
-        {
-            response["dummyOtp"] = result.OtpCode;
-        }
-
-        return Ok(response);
+            success = true,
+            userId = result.User.UserId,
+            message = "Registration successful."
+        });
     }
+
 
     
     [HttpPost("register-electrician")]
