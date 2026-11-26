@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
+
 namespace ElectroSL_Backend.Services.Implementations;
 
 public class AuthService : IAuthService
@@ -29,7 +30,7 @@ public class AuthService : IAuthService
         _passwordHasher = passwordHasher;
     }
 
-    public async Task<User?> RegisterUserAsync(RegisterDto dto)
+    public async Task<RegistrationResultDto?> RegisterUserAsync(RegisterDto dto)
     {
         string email = dto.Email.Trim().ToLowerInvariant();
 
@@ -64,7 +65,11 @@ public class AuthService : IAuthService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        return user;
+        return new RegistrationResultDto
+        {
+            User = user,
+            OtpCode = otpCode
+        };;
     }
 
     public async Task<AuthResponseDto?> LoginAsync(string email, string password)
@@ -132,6 +137,30 @@ public class AuthService : IAuthService
             Email = user.Email,
             Role = user.Role
         };
+    }
+
+    public async Task<string?> GenerateOtpAsync(int userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+
+        if (user == null)
+        {
+            return null;
+        }
+
+        string otpCode = RandomNumberGenerator
+            .GetInt32(100000, 1000000)
+            .ToString();
+
+        user.OtpCodeHash = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(otpCode))
+        );
+
+        user.OtpExpiryUtc = DateTime.UtcNow.AddMinutes(5);
+
+        await _context.SaveChangesAsync();
+
+        return otpCode;
     }
 
     public async Task<bool> VerifyOtpAsync(int userId, string otpCode)

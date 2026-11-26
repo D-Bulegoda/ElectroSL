@@ -6,6 +6,8 @@ using ElectroSL_Backend.Utilities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Hosting;
+using System.Collections.Generic;
 
 namespace ElectroSL_Backend.Controllers;
 
@@ -16,15 +18,18 @@ public class AuthController : ControllerBase
     private readonly IAuthService _authService;
     private readonly IDocumentStorageService _documentStorageService;
     private readonly ElectroSLDbContext _context;
+    private readonly IWebHostEnvironment _environment;
 
     public AuthController(
         IAuthService authService,
         IDocumentStorageService documentStorageService,
-        ElectroSLDbContext context)
+        ElectroSLDbContext context,
+        IWebHostEnvironment environment)
     {
         _authService = authService;
         _documentStorageService = documentStorageService;
         _context = context;
+        _environment = environment;
     }
 
     [HttpPost("login")]
@@ -78,9 +83,9 @@ public class AuthController : ControllerBase
             });
         }
 
-        var user = await _authService.RegisterUserAsync(dto);
+        var result = await _authService.RegisterUserAsync(dto);
 
-        if (user == null)
+        if (result == null)
         {
             return BadRequest(new
             {
@@ -88,14 +93,22 @@ public class AuthController : ControllerBase
             });
         }
 
-        return Ok(new
+        var response = new Dictionary<string, object>
         {
-            success = true,
-            userId = user.UserId,
-            message = "Registration successful."
-        });
+            ["success"] = true,
+            ["userId"] = result.User.UserId,
+            ["message"] = "Registration successful. Please verify your phone number."
+        };
+
+        if (_environment.IsDevelopment())
+        {
+            response["dummyOtp"] = result.OtpCode;
+        }
+
+        return Ok(response);
     }
 
+    
     [HttpPost("register-electrician")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> RegisterElectrician([FromForm] RegisterElectricianFormDto dto)
@@ -170,6 +183,16 @@ public class AuthController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
+        var otpCode = await _authService.GenerateOtpAsync(user.UserId);
+
+        if (otpCode == null)
+        {
+            return StatusCode(500, new
+            {
+                message = "Failed to generate OTP."
+            });
+        }
+
         var profile = new ElectricianProfile
         {
             UserId = user.UserId,
@@ -182,28 +205,38 @@ public class AuthController : ControllerBase
         _context.ElectricianProfiles.Add(profile);
         await _context.SaveChangesAsync();
 
-        return Ok(new
+        var response = new Dictionary<string, object>
         {
-            success = true,
-            userId = user.UserId,
-            profileId = profile.ProfileId,
-            message =
-                "Electrician registration submitted successfully. Application is pending admin review."
-        });
+            ["success"] = true,
+            ["userId"] = user.UserId,
+            ["profileId"] = profile.ProfileId,
+            ["message"] =
+                "Electrician registration submitted successfully. Please verify your phone number. Your application is pending admin review."
+        };
+
+        if (_environment.IsDevelopment())
+        {
+            response["dummyOtp"] = otpCode;
+        }
+
+        return Ok(response);
     }
+
 
     [HttpPost("verify-otp")]
     public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
     {
-        if (dto == null || string.IsNullOrWhiteSpace(dto.OtpCode))
+        if (dto == null ||
+            dto.UserId <= 0 ||
+            string.IsNullOrWhiteSpace(dto.OtpCode))
         {
             return BadRequest(new
             {
-                message = "OTP code is required."
+                message = "Valid user ID and OTP code are required."
             });
         }
 
-        var success = await _authService.VerifyOtpAsync(1, dto.OtpCode);
+       var success = await _authService.VerifyOtpAsync(dto.UserId, dto.OtpCode);
 
         if (!success)
         {
