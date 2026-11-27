@@ -30,47 +30,41 @@ public class AuthService : IAuthService
         _passwordHasher = passwordHasher;
     }
 
-    public async Task<RegistrationResultDto?> RegisterUserAsync(RegisterDto dto)
+    
+public async Task<RegistrationResultDto?> RegisterUserAsync(RegisterDto dto)
+{
+    string email = dto.Email.Trim().ToLowerInvariant();
+
+    bool emailExists = await _context.Users
+        .AnyAsync(u => u.Email.ToLower() == email);
+
+    if (emailExists)
+        return null;
+
+    string role = string.IsNullOrWhiteSpace(dto.Role)
+        ? "Customer"
+        : dto.Role.Trim();
+
+    var user = new User
     {
-        string email = dto.Email.Trim().ToLowerInvariant();
+        Name = dto.Name.Trim(),
+        Email = email,
+        Phone = dto.Phone?.Trim() ?? string.Empty,
+        Role = role,
+        PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+        CreatedAt = DateTime.UtcNow
+    };
 
-        bool emailExists = await _context.Users
-            .AnyAsync(u => u.Email.ToLower() == email);
+    _context.Users.Add(user);
+    await _context.SaveChangesAsync();
 
-        if (emailExists)
-            return null;
+    return new RegistrationResultDto
+    {
+        User = user,
+        OtpCode = string.Empty
+    };
+}
 
-        string role = string.IsNullOrWhiteSpace(dto.Role) ? "Customer" : dto.Role.Trim();
-
-        var user = new User
-        {
-            Name = dto.Name.Trim(),
-            Email = email,
-            Phone = dto.Phone?.Trim() ?? string.Empty,
-            Role = role,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // Generate a secure 6-digit OTP
-        string otpCode = RandomNumberGenerator
-            .GetInt32(100000, 1000000)
-            .ToString();
-
-        user.OtpCodeHash = Convert.ToHexString(
-            SHA256.HashData(Encoding.UTF8.GetBytes(otpCode))
-        );
-        user.OtpExpiryUtc = DateTime.UtcNow.AddMinutes(5);
-
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
-
-        return new RegistrationResultDto
-        {
-            User = user,
-            OtpCode = otpCode
-        };;
-    }
 
     public async Task<AuthResponseDto?> LoginAsync(string email, string password)
     {
