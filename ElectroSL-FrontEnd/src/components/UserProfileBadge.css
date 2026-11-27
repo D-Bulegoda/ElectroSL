@@ -2,16 +2,30 @@
 
 .user-badge-wrapper {
   position: fixed;
-  top: 18px;
-  right: 26px;
+  top: 16px;
+  right: 24px;
   z-index: 1250;
   font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* Keep dashboard top-right buttons clear of the floating profile pill */
+/* Keep dashboard headers and top landing navbar clear of the floating profile pill */
 body.has-user-badge .customer-header,
-body.has-user-badge .dashboard-header {
-  padding-right: 235px;
+body.has-user-badge .dashboard-header,
+body.has-user-badge header,
+body.has-user-badge nav:not(.sidebar-nav),
+body.has-user-badge .navbar,
+body.has-user-badge .home-navbar,
+body.has-user-badge .top-nav {
+  padding-right: 245px;
+  box-sizing: border-box;
+}
+
+/* Prevent double right-padding when <nav> is nested inside <header> */
+body.has-user-badge header nav:not(.sidebar-nav),
+body.has-user-badge header .navbar,
+body.has-user-badge header .home-navbar,
+body.has-user-badge header .top-nav {
+  padding-right: 0;
 }
 
 /* Base Pill Styling */
@@ -259,8 +273,20 @@ body.has-user-badge .dashboard-header {
   }
 
   body.has-user-badge .customer-header,
-  body.has-user-badge .dashboard-header {
+  body.has-user-badge .dashboard-header,
+  body.has-user-badge header,
+  body.has-user-badge nav:not(.sidebar-nav),
+  body.has-user-badge .navbar,
+  body.has-user-badge .home-navbar,
+  body.has-user-badge .top-nav {
     padding-right: 0;
-    padding-top: 44px;
+    padding-top: 56px;
+  }
+
+  body.has-user-badge header nav:not(.sidebar-nav),
+  body.has-user-badge header .navbar,
+  body.has-user-badge header .home-navbar,
+  body.has-user-badge header .top-nav {
+    padding-top: 0;
   }
 }
