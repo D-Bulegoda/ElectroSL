@@ -1,30 +1,70 @@
+/* Floating Profile Pill — Navy Blue, Black, Silver & White Theme */
+
 .user-badge-wrapper {
   position: fixed;
-  top: 16px;
-  right: 22px;
-  z-index: 1200;
-  font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+  top: 18px;
+  right: 26px;
+  z-index: 1250;
+  font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+/* Keep dashboard top-right buttons clear of the floating profile pill */
+body.has-user-badge .customer-header,
+body.has-user-badge .dashboard-header {
+  padding-right: 235px;
+}
+
+/* Base Pill Styling */
 .user-badge-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: #060b14;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 999px;
+  gap: 11px;
   padding: 6px 14px 6px 7px;
+  border-radius: 999px;
+  border: 1.5px solid #cbd5e1;
+  background: #0b2545;
   color: #ffffff;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(6, 11, 20, 0.28);
-  transition: border-color 0.2s, background 0.2s;
+  box-shadow: 0 10px 26px rgba(6, 11, 20, 0.24);
+  transition: transform 0.16s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .user-badge-pill:hover {
+  transform: translateY(-1px);
+  border-color: #ffffff;
+  box-shadow: 0 14px 30px rgba(6, 11, 20, 0.34);
+}
+
+/* Role Variations: Customer (Navy), Electrician (Black + Silver), Admin (Obsidian + White) */
+.user-badge-pill.role-customer {
+  background: linear-gradient(135deg, #0b2545 0%, #13315c 100%);
+  border-color: #cbd5e1;
+}
+
+.user-badge-pill.role-customer:hover {
+  background: #060b14;
+}
+
+.user-badge-pill.role-electrician {
+  background: linear-gradient(135deg, #060b14 0%, #0b2545 100%);
+  border-color: #94a3b8;
+}
+
+.user-badge-pill.role-electrician:hover {
   background: #0b2545;
   border-color: #ffffff;
 }
 
+.user-badge-pill.role-admin {
+  background: #060b14;
+  border-color: #ffffff;
+}
+
+.user-badge-pill.role-admin:hover {
+  background: #0b2545;
+}
+
+/* Avatar Circle */
 .user-badge-avatar {
   width: 34px;
   height: 34px;
@@ -32,65 +72,151 @@
   background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
   color: #060b14;
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(6, 11, 20, 0.15);
 }
 
+/* Name & Role Stack (Fixes "Customer ACustomer" concatenation) */
 .user-badge-info {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   text-align: left;
   line-height: 1.2;
+  max-width: 150px;
 }
 
 .user-badge-name {
   font-size: 0.84rem;
   font-weight: 700;
   color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
 }
 
 .user-badge-role {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #cbd5e1;
+  margin-top: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
 }
 
+.user-badge-pill.role-admin .user-badge-role {
+  background: #ffffff;
+  color: #060b14;
+}
+
+.user-badge-chevron {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  margin-left: 2px;
+  transition: transform 0.2s ease;
+}
+
+.user-badge-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
 .user-badge-menu {
-  margin-top: 8px;
-  width: 240px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 255px;
   background: #ffffff;
   border: 1px solid #cbd5e1;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 16px 36px rgba(6, 11, 20, 0.2);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 20px 44px rgba(6, 11, 20, 0.24);
+  animation: badgeMenuFade 0.15s ease-out;
+}
+
+@keyframes badgeMenuFade {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .user-badge-menu-header {
-  padding-bottom: 10px;
+  padding-bottom: 11px;
   margin-bottom: 8px;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
-.user-badge-menu-header strong {
+.user-badge-menu-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.user-badge-menu-top strong {
   color: #060b14;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
+  font-weight: 800;
 }
 
-.user-badge-menu-header span {
+.user-badge-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.user-badge-tag.role-customer {
+  background: #e2e8f0;
+  color: #0b2545;
+}
+
+.user-badge-tag.role-electrician {
+  background: #0b2545;
+  color: #ffffff;
+}
+
+.user-badge-tag.role-admin {
+  background: #060b14;
+  color: #ffffff;
+}
+
+.user-badge-email {
   color: #475569;
   font-size: 0.78rem;
+  word-break: break-all;
 }
 
-.user-badge-menu-header small {
+.user-badge-location {
   color: #0b2545;
   font-size: 0.75rem;
   font-weight: 600;
-  margin-top: 3px;
+  margin-top: 2px;
+}
+
+.user-badge-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .user-badge-menu button {
@@ -98,12 +224,13 @@
   text-align: left;
   background: transparent;
   border: none;
-  padding: 8px 10px;
-  border-radius: 7px;
+  padding: 9px 10px;
+  border-radius: 8px;
   font-size: 0.84rem;
   font-weight: 600;
   color: #0b2545;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .user-badge-menu button:hover {
@@ -112,8 +239,28 @@
 }
 
 .user-badge-menu button.user-badge-logout {
-  margin-top: 6px;
+  margin-top: 8px;
   border-top: 1px solid #e2e8f0;
-  padding-top: 10px;
+  border-radius: 0 0 8px 8px;
+  padding-top: 11px;
   color: #dc2626;
+  font-weight: 700;
+}
+
+.user-badge-menu button.user-badge-logout:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+@media (max-width: 768px) {
+  .user-badge-wrapper {
+    top: 12px;
+    right: 14px;
+  }
+
+  body.has-user-badge .customer-header,
+  body.has-user-badge .dashboard-header {
+    padding-right: 0;
+    padding-top: 44px;
+  }
 }

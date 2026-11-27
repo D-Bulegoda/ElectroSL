@@ -1,10 +1,92 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAuthSession } from '../../services/authService';
+import { fetchWithAuth } from '../../services/api';
 
 export default function CustomerHome() {
   const session = getAuthSession();
   const customerName = session?.user?.name || 'Welcome Back';
+  const customerId = session?.user?.userId;
+
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadMyJobs = useCallback(async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const endpoint = customerId
+        ? `/job/my-jobs?customerId=${encodeURIComponent(customerId)}`
+        : '/job/my-jobs';
+
+      const data = await fetchWithAuth(endpoint);
+
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.jobs)
+          ? data.jobs
+          : Array.isArray(data?.data)
+            ? data.data
+            : [];
+
+      // Sort newest jobs first
+      const sorted = [...list].sort((a, b) => {
+        const idA = Number(a.jobId ?? a.id ?? 0);
+        const idB = Number(b.jobId ?? b.id ?? 0);
+        return idB - idA;
+      });
+
+      setJobs(sorted);
+    } catch (err) {
+      setJobs([]);
+      setError(err?.message || 'Unable to load your service requests.');
+    } finally {
+      setLoading(false);
+    }
+  }, [customerId]);
+
+  useEffect(() => {
+    loadMyJobs();
+  }, [loadMyJobs]);
+
+  const formatCount = (num) => String(num).padStart(2, '0');
+
+  const normalizedStatuses = jobs.map((j) =>
+    String(j.status || j.Status || '').toLowerCase()
+  );
+
+  const totalJobs = jobs.length;
+  const openRequests = normalizedStatuses.filter((s) =>
+    ['open', 'pending'].includes(s)
+  ).length;
+  const activeJobs = normalizedStatuses.filter((s) =>
+    ['accepted', 'inprogress', 'in_progress', 'started', 'ongoing'].includes(s)
+  ).length;
+  const completedJobs = normalizedStatuses.filter((s) =>
+    ['completed', 'closed', 'paid'].includes(s)
+  ).length;
+
+  const getBadgeClass = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (['completed', 'closed', 'paid'].includes(s)) return 'completed';
+    if (['accepted', 'inprogress', 'in_progress', 'started', 'ongoing'].includes(s)) {
+      return 'ongoing';
+    }
+    return 'pending';
+  };
+
+  const formatDate = (rawDate) => {
+    if (!rawDate) return '';
+    const d = new Date(rawDate);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-LK', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
 
   return (
     <div className="customer-layout">
@@ -71,7 +153,7 @@ export default function CustomerHome() {
           <Link
             to="/"
             className="secondary-button"
-            style={{ marginRight: '175px', padding: '9px 16px', fontSize: '13px' }}
+            style={{ padding: '9px 16px', fontSize: '13px' }}
           >
             ← Back to Home
           </Link>
@@ -92,13 +174,13 @@ export default function CustomerHome() {
           <div className="welcome-icon">⚡</div>
         </div>
 
-        {/* Statistics */}
+        {/* Live Statistics */}
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-icon">📋</div>
             <div>
               <p>Total Jobs</p>
-              <h2>05</h2>
+              <h2>{formatCount(totalJobs)}</h2>
             </div>
           </div>
 
@@ -106,7 +188,7 @@ export default function CustomerHome() {
             <div className="stat-icon">⚡</div>
             <div>
               <p>Active Jobs</p>
-              <h2>02</h2>
+              <h2>{formatCount(activeJobs)}</h2>
             </div>
           </div>
 
@@ -114,7 +196,7 @@ export default function CustomerHome() {
             <div className="stat-icon">🕒</div>
             <div>
               <p>Open Requests</p>
-              <h2>01</h2>
+              <h2>{formatCount(openRequests)}</h2>
             </div>
           </div>
 
@@ -122,12 +204,12 @@ export default function CustomerHome() {
             <div className="stat-icon">✓</div>
             <div>
               <p>Completed Jobs</p>
-              <h2>02</h2>
+              <h2>{formatCount(completedJobs)}</h2>
             </div>
           </div>
         </div>
 
-        {/* Quick Actions (Quotations removed) */}
+        {/* Quick Actions */}
         <section className="dashboard-section">
           <div className="section-heading">
             <h2>Quick Actions</h2>
@@ -161,28 +243,127 @@ export default function CustomerHome() {
           </div>
         </section>
 
-        {/* Recent Jobs */}
+        {/* Customer's Real Service Requests */}
         <section className="dashboard-section">
-          <div className="section-heading">
-            <h2>Recent Service Requests</h2>
-            <p>Track the status of your recent jobs.</p>
+          <div
+            className="section-heading"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '12px',
+            }}
+          >
+            <div>
+              <h2>My Service Requests</h2>
+              <p>Real-time status of electrical jobs you have posted.</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={loadMyJobs}
+              className="secondary-button"
+              style={{ padding: '7px 14px', fontSize: '12px' }}
+              disabled={loading}
+            >
+              {loading ? 'Refreshing...' : '↻ Refresh'}
+            </button>
           </div>
 
-          <div className="recent-job-card">
-            <div>
-              <strong>Ceiling Fan Repair &amp; Regulator Replacement</strong>
-              <p>Dispatched to nearby verified electricians</p>
+          {error && (
+            <div
+              className="recent-job-card"
+              style={{ borderLeft: '4px solid #dc2626', background: '#fef2f2' }}
+            >
+              <div>
+                <strong style={{ color: '#991b1b' }}>Could not load jobs</strong>
+                <p style={{ color: '#b91c1c' }}>{error}</p>
+              </div>
+              <button
+                type="button"
+                onClick={loadMyJobs}
+                className="secondary-button"
+                style={{ padding: '7px 14px', fontSize: '12px' }}
+              >
+                Retry
+              </button>
             </div>
-            <span className="status-badge ongoing">Accepted</span>
-          </div>
+          )}
 
-          <div className="recent-job-card">
-            <div>
-              <strong>Main Distribution Board Inspection</strong>
-              <p>Completed with OTP verification</p>
+          {!error && loading ? (
+            <div className="recent-job-card">
+              <div>
+                <strong>Loading your service requests...</strong>
+                <p>Fetching your job history from ElectroSL.</p>
+              </div>
             </div>
-            <span className="status-badge completed">Completed</span>
-          </div>
+          ) : !error && jobs.length === 0 ? (
+            <div className="recent-job-card">
+              <div>
+                <strong>No service requests yet</strong>
+                <p>
+                  You haven&apos;t posted any electrical jobs yet. Click &ldquo;+ Post a New Job&rdquo; to request a certified electrician.
+                </p>
+              </div>
+              <Link
+                to="/customer/post-job"
+                className="primary-button"
+                style={{ padding: '9px 16px', fontSize: '13px', whiteSpace: 'nowrap' }}
+              >
+                + Post Job
+              </Link>
+            </div>
+          ) : (
+            !error &&
+            jobs.slice(0, 6).map((job, idx) => {
+              const id = job.jobId ?? job.JobId ?? job.id ?? idx;
+              const title = job.title || job.Title || 'Electrical Service Request';
+              const category = job.category || job.Category || '';
+              const address =
+                job.address ||
+                job.Address ||
+                job.locationAddress ||
+                job.district ||
+                job.District ||
+                '';
+              const electricianName =
+                job.electricianName ||
+                job.ElectricianName ||
+                job.assignedElectricianName ||
+                '';
+              const createdDate = formatDate(job.createdAt || job.CreatedAt);
+              const status = job.status || job.Status || 'Open';
+
+              const subtitleParts = [
+                category && `Category: ${category}`,
+                address && `📍 ${address}`,
+                electricianName && `👷 Assigned: ${electricianName}`,
+                createdDate && `📅 ${createdDate}`,
+              ].filter(Boolean);
+
+              return (
+                <Link
+                  key={id}
+                  to="/customer/tracking"
+                  state={{ jobId: id }}
+                  className="recent-job-card"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  <div>
+                    <strong>{title}</strong>
+                    <p>
+                      {subtitleParts.length > 0
+                        ? subtitleParts.join('  •  ')
+                        : 'Dispatched to nearby verified electricians'}
+                    </p>
+                  </div>
+                  <span className={`status-badge ${getBadgeClass(status)}`}>
+                    {status}
+                  </span>
+                </Link>
+              );
+            })
+          )}
         </section>
 
         <footer className="customer-footer">
