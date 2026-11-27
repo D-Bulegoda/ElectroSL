@@ -156,7 +156,33 @@ public class JobController : ControllerBase
     [HttpGet("{jobId}")]
     public async Task<IActionResult> GetJobById(int jobId)
     {
-        var job = await _context.Jobs.FindAsync(jobId);
+        var job = await _context.Jobs
+            .Where(j => j.JobId == jobId)
+            .Select(j => new
+            {
+                j.JobId,
+                j.CustomerId,
+                j.ElectricianId,
+                j.JobType,
+                j.Description,
+                j.LocationLat,
+                j.LocationLng,
+                j.IsEmergency,
+                j.Status,
+                j.CreatedAt,
+                CustomerName = _context.Users
+                    .Where(u => u.UserId == j.CustomerId)
+                    .Select(u => u.Name)
+                    .FirstOrDefault(),
+                ElectricianName = j.ElectricianId.HasValue
+                    ? _context.Users
+                        .Where(u => u.UserId == j.ElectricianId.Value)
+                        .Select(u => u.Name)
+                        .FirstOrDefault()
+                    : null
+            })
+            .FirstOrDefaultAsync();
+
         if (job == null)
         {
             return NotFound(new { message = "Job not found." });
@@ -168,12 +194,13 @@ public class JobController : ControllerBase
     // 5. Fetch jobs belonging to the logged-in Customer or Electrician
     [Authorize]
     [HttpGet("my-jobs")]
-    public async Task<IActionResult> GetMyJobs()
+    public async Task<IActionResult> GetMyJobs([FromQuery] int? customerId = null)
     {
-        var userId = GetCurrentUserId();
+        var tokenUserId = GetCurrentUserId();
         var role = GetCurrentUserRole();
+        var resolvedUserId = tokenUserId > 0 ? tokenUserId : (customerId ?? 0);
 
-        if (userId <= 0)
+        if (resolvedUserId <= 0)
         {
             return Unauthorized(new { message = "Invalid user session." });
         }
@@ -182,15 +209,47 @@ public class JobController : ControllerBase
 
         if (role == "Electrician")
         {
-            query = query.Where(j => j.ElectricianId == userId);
+            query = query.Where(j => j.ElectricianId == resolvedUserId);
         }
-        else if (role == "Customer")
+        else if (role == "Customer" || customerId.HasValue)
         {
-            query = query.Where(j => j.CustomerId == userId);
+            query = query.Where(j => j.CustomerId == resolvedUserId);
+        }
+        else
+        {
+            query = query.Where(j => j.CustomerId == resolvedUserId || j.ElectricianId == resolvedUserId);
         }
 
         var jobs = await query
             .OrderByDescending(j => j.CreatedAt)
+            .Select(j => new
+            {
+                j.JobId,
+                j.CustomerId,
+                j.ElectricianId,
+                j.JobType,
+                j.Description,
+                Title = j.IsEmergency ? $"🚨 {j.JobType} (Emergency)" : j.JobType,
+                Category = j.JobType,
+                Address = !string.IsNullOrWhiteSpace(j.Description)
+                    ? j.Description
+                    : $"GPS ({j.LocationLat:F4}, {j.LocationLng:F4})",
+                j.LocationLat,
+                j.LocationLng,
+                j.IsEmergency,
+                j.Status,
+                j.CreatedAt,
+                CustomerName = _context.Users
+                    .Where(u => u.UserId == j.CustomerId)
+                    .Select(u => u.Name)
+                    .FirstOrDefault(),
+                ElectricianName = j.ElectricianId.HasValue
+                    ? _context.Users
+                        .Where(u => u.UserId == j.ElectricianId.Value)
+                        .Select(u => u.Name)
+                        .FirstOrDefault()
+                    : null
+            })
             .ToListAsync();
 
         return Ok(jobs);
@@ -279,7 +338,8 @@ public class JobController : ControllerBase
     private int GetCurrentUserId()
     {
         var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sub")?.Value;
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst("userId")?.Value;
         return int.TryParse(idClaim, out int userId) ? userId : 0;
     }
 
